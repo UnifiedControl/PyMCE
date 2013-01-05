@@ -19,8 +19,6 @@
 #
 # NOTE: File has been modified by http://github.com/fuzeman
 
-from struct import unpack_from, unpack, pack
-
 prontoClock = 0.241246
 SignalFree = 10000
 SignalFreeRC6 = 2700
@@ -276,7 +274,6 @@ def Pronto2MceTimings(pronto, nRepeat=0):
         myFunc = prontoHandlers[vals[0]]
     except:
         raise Exception("Don't have a decoder for pronto format %s" % vals[0])
-        return
     prontoData = []
     for v in vals:
         prontoData.append(int(v, 16))

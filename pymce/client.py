@@ -4,8 +4,8 @@
 from struct import pack
 from threading import Thread
 import win32event
-from MceMessageReceiver import MceMessageReceiver
-from pronto import Pronto2MceTimings, ConvertIrCodeToProntoRaw
+from pymce.receiver import MceMessageReceiver
+from pymce.pronto import Pronto2MceTimings, ConvertIrCodeToProntoRaw
 
 __author__ = 'Dean Gardiner'
 
@@ -18,11 +18,12 @@ def RoundAndPackTimings(timingData):
     return out
 
 
-class Mce():
-    def __init__(self, receive_callback, debug=False):
+class MceRemoteClient():
+    def __init__(self, receive_callback, learn_callback, debug=False):
         self.debug = debug
         self.client = None
         self.receive_callback = receive_callback
+        self.learn_callback = learn_callback
 
         self.ptr_fmt = None
         self.ptr_len = 4
@@ -57,18 +58,16 @@ class Mce():
         #Send pronto code:
         freq, transmitValues = Pronto2MceTimings(code, repeatCount)
         transmitCode = RoundAndPackTimings(transmitValues)
-        n = len(transmitCode)
         #Port is set to zero, it is populated automatically
         header = pack(7 * self.ptr_fmt, 2, int(1000000. / freq), 0, 0, 0, 1, len(transmitCode))
         transmitData = header + transmitCode
         self.client.Transmit(transmitData)
 
-    def learn(self, callback):
+    def learn(self):
         if not self.client.ChangeReceiveMode("l".encode("ascii")):
             return False
 
         # Setup learning
-        self.learn_callback = callback
         self.client.learn_callback = self.learn_response
 
         return True
@@ -83,28 +82,23 @@ class Mce():
         self.client.ChangeReceiveMode("n".encode("ascii"))
 
         # Reset learning
-        self.learn_callback = None
         self.client.learn_callback = None
 
 
 if __name__ == '__main__':
-    def handle(code):
+    def receive(code):
         print "Raw IR Code:", code
 
-    def learn_callback(code):
+    def learn(code):
         print "Pronto Code:", code
 
-    m = Mce(handle, debug=True)
+    m = MceRemoteClient(receive, learn, debug=True)
     m.start()
 
     while True:
         a = raw_input("Command [learn, transmit] > ")
         if a == "learn":
-            curLearning = m.learn(learn_callback)
-            if curLearning:
-                print "learning"
-            else:
-                print "not able to learn"
+            curLearning = m.learn()
         elif a == "transmit":
             code = raw_input("Pronto Code: ")
             m.transmit(code)
