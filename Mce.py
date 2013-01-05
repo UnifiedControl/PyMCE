@@ -94,7 +94,7 @@ if __name__ == '__main__':
     def learn_callback(code):
         print "Pronto Code:", code
 
-    m = Mce(handle)
+    m = Mce(handle, debug=True)
     m.start()
 
     while True:

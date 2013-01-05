@@ -182,7 +182,7 @@ class MceMessageReceiver(object):
                 self.keepRunning = False
                 break
             elif rc == win32event.WAIT_TIMEOUT:  # Learn timeout
-                self._log("LearnTimeout: Sending ir code %s"%str(self.result))
+                self._log("self.learn_callback()")
                 self.learn_callback(self.freqs, self.result)
                 self.result = []
                 self.timeout = win32event.INFINITE
@@ -220,7 +220,7 @@ class MceMessageReceiver(object):
                         if self.learn_callback is None:  # normal mode
                             if a > 6500:  # button held?
                                 if self.CodeValid(self.result):
-                                    self._log("Sending ir code %s" % str(self.result))
+                                    self._log("self.callback()")
                                     self.callback(self.result)
                                 self.result = []
                     if not self.learn_callback is None:  # learn mode
