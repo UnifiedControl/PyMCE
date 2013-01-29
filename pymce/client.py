@@ -72,17 +72,20 @@ class MceRemoteClient():
 
         return True
 
+    def learnReset(self):
+        self.client.ChangeReceiveMode("n".encode("ascii"))
+        self.client.learn_callback = None
+
+
     def learn_response(self, freqs, code):
         median_freq = sorted(freqs)[len(freqs) / 2]
         print "learn_response", "%d.%03d kHz" % (median_freq / 1000, median_freq % 1000)
         pronto_code = ConvertIrCodeToProntoRaw(median_freq, code)
 
-        self.learn_callback(pronto_code)
-
-        self.client.ChangeReceiveMode("n".encode("ascii"))
-
         # Reset learning
-        self.client.learn_callback = None
+        self.learnReset()
+
+        self.learn_callback(pronto_code)
 
 
 if __name__ == '__main__':
