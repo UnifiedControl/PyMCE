@@ -281,10 +281,6 @@ namespace PyMCE.Core.Device
         protected Guid _deviceGuid;
         protected string _devicePath;
 
-        //protected KeyboardCallback _keyboardCallback;
-        //protected MouseCallback _mouseCallback;
-        //protected RemoteCallback _remoteCallback;
-
         #endregion Variables
 
         #region Constructors
@@ -300,10 +296,6 @@ namespace PyMCE.Core.Device
 
             _deviceGuid = deviceGuid;
             _devicePath = devicePath;
-
-            //_remoteCallback = remoteCallback;
-            //_keyboardCallback = keyboardCallback;
-            //_mouseCallback = mouseCallback;
         }
 
         #endregion Constructors
@@ -356,19 +348,19 @@ namespace PyMCE.Core.Device
         /// <returns>Device path.</returns>
         public static string Find(Guid classGuid)
         {
-            IntPtr handle = SetupDiGetClassDevs(ref classGuid, null, IntPtr.Zero, Digcfs.DeviceInterface | Digcfs.Present);
+            var handle = SetupDiGetClassDevs(ref classGuid, null, IntPtr.Zero, Digcfs.DeviceInterface | Digcfs.Present);
 
             if (handle.ToInt32() == -1)
                 return null;
 
-            for (int deviceIndex = 0; ; deviceIndex++)
+            for (var deviceIndex = 0; ; deviceIndex++)
             {
-                DeviceInfoData deviceInfoData = new DeviceInfoData();
+                var deviceInfoData = new DeviceInfoData();
                 deviceInfoData.Size = Marshal.SizeOf(deviceInfoData);
 
                 if (!SetupDiEnumDeviceInfo(handle, deviceIndex, ref deviceInfoData))
                 {
-                    int lastError = Marshal.GetLastWin32Error();
+                    var lastError = Marshal.GetLastWin32Error();
 
                     // out of devices or do we have an error?
                     if (lastError != ErrorNoMoreItems && lastError != ErrorModNotFound)
@@ -381,7 +373,7 @@ namespace PyMCE.Core.Device
                     break;
                 }
 
-                DeviceInterfaceData deviceInterfaceData = new DeviceInterfaceData();
+                var deviceInterfaceData = new DeviceInterfaceData();
                 deviceInterfaceData.Size = Marshal.SizeOf(deviceInterfaceData);
 
                 if (!SetupDiEnumDeviceInterfaces(handle, ref deviceInfoData, ref classGuid, 0, ref deviceInterfaceData))
@@ -400,11 +392,10 @@ namespace PyMCE.Core.Device
                     throw new Win32Exception(Marshal.GetLastWin32Error());
                 }
 
-                DeviceInterfaceDetailData deviceInterfaceDetailData = new DeviceInterfaceDetailData();
-                if (IntPtr.Size == 8)
-                    deviceInterfaceDetailData.Size = 8;
-                else
-                    deviceInterfaceDetailData.Size = 5;
+                var deviceInterfaceDetailData = new DeviceInterfaceDetailData
+                                                    {
+                                                        Size = IntPtr.Size == 8 ? 8 : 5
+                                                    };
 
 
                 if (
@@ -429,15 +420,13 @@ namespace PyMCE.Core.Device
 
         #region Debug
 
-        protected static StreamWriter _debugFile;
-
         /// <summary>
         /// Opens a debug output file.
         /// </summary>
         /// <param name="fileName">Name of the file.</param>
         protected static void DebugOpen(string fileName)
         {
-            try
+            /*try
             {
 #if TEST_APPLICATION
         string path = fileName;
@@ -457,7 +446,7 @@ namespace PyMCE.Core.Device
       {
 #endif
                 _debugFile = null;
-            }
+            }*/
         }
 
         /// <summary>
@@ -465,12 +454,12 @@ namespace PyMCE.Core.Device
         /// </summary>
         protected static void DebugClose()
         {
-            if (_debugFile != null)
+            /*if (_debugFile != null)
             {
                 _debugFile.Close();
                 _debugFile.Dispose();
                 _debugFile = null;
-            }
+            }*/
         }
 
         /// <summary>
@@ -480,17 +469,7 @@ namespace PyMCE.Core.Device
         /// <param name="args">Formatting arguments.</param>
         protected static void DebugWriteLine(string line, params object[] args)
         {
-            if (_debugFile != null)
-            {
-                _debugFile.Write("{0:yyyy-MM-dd HH:mm:ss.ffffff} - ", DateTime.Now);
-                _debugFile.WriteLine(line, args);
-            }
-#if TRACE
-            else
-            {
-                Trace.WriteLine(String.Format(line, args));
-            }
-#endif
+            Debug.WriteLine(String.Format(line, args));
         }
 
         /// <summary>
@@ -500,16 +479,7 @@ namespace PyMCE.Core.Device
         /// <param name="args">Formatting arguments.</param>
         protected static void DebugWrite(string text, params object[] args)
         {
-            if (_debugFile != null)
-            {
-                _debugFile.Write(text, args);
-            }
-#if TRACE
-            else
-            {
-                Trace.Write(String.Format(text, args));
-            }
-#endif
+            Debug.Write(String.Format(text, args));
         }
 
         /// <summary>
@@ -517,16 +487,7 @@ namespace PyMCE.Core.Device
         /// </summary>
         protected static void DebugWriteNewLine()
         {
-            if (_debugFile != null)
-            {
-                _debugFile.WriteLine();
-            }
-#if TRACE
-            else
-            {
-                Trace.WriteLine(String.Empty);
-            }
-#endif
+            Debug.WriteLine(String.Empty);
         }
 
         /// <summary>
