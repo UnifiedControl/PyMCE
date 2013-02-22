@@ -24,6 +24,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Linq;
 using System.ServiceProcess;
 using PyMCE.Core.Infrared;
 using Microsoft.Win32;
@@ -76,13 +77,11 @@ namespace PyMCE.Core.Device
     {
         #region Constants
 
-        private const string AutomaticButtonsRegKey =
-            @"SYSTEM\CurrentControlSet\Services\HidIr\Remotes\745a17a0-74d3-11d0-b6fe-00a0c90f57da";
+        private const string AutomaticButtonsRegKey = @"SYSTEM\CurrentControlSet\Services\HidIr\Remotes\745a17a0-74d3-11d0-b6fe-00a0c90f57da";
 
         private const int VistaVersionNumber = 6;
 
         private static readonly Guid MicrosoftGuid = new Guid(0x7951772d, 0xcd50, 0x49b7, 0xb1, 0x03, 0x2b, 0xaa, 0xc4, 0x94, 0xfc, 0x57);
-
         private static readonly Guid ReplacementGuid = new Guid(0x00873fdf, 0x61a8, 0x11d1, 0xaa, 0x5e, 0x00, 0xc0, 0x4f, 0xb1, 0x72, 0x8b);
 
         #endregion Constants
@@ -91,17 +90,16 @@ namespace PyMCE.Core.Device
 
         #region Configuration
 
-        private bool _disableAutomaticButtons;
         private bool _disableMceServices = true;
-
         private int _learnTimeout = 10000;
 
         #endregion
 
         private Driver _driver;
-        private bool _ignoreAutomaticButtons;
 
         #endregion
+
+        #region Public Methods
 
         #region Learn
 
@@ -152,23 +150,10 @@ namespace PyMCE.Core.Device
 
         public void Start()
         {
-#if TRACE
             Trace.WriteLine("Start MicrosoftMceTransceiver");
-#endif
+
             if (_driver != null)
                 throw new InvalidOperationException("MicrosoftMceTransceiver already started");
-
-            //LoadSettings();
-
-            // Put this in a try...catch so that if the registry keys don't exist we don't throw an ugly exception.
-            try
-            {
-                _ignoreAutomaticButtons = CheckAutomaticButtons();
-            }
-            catch
-            {
-                _ignoreAutomaticButtons = false;
-            }
 
             if (_disableMceServices)
                 DisableMceServices();
@@ -176,7 +161,7 @@ namespace PyMCE.Core.Device
             Guid deviceGuid;
             string devicePath;
 
-            Driver newDriver = null;
+            Driver newDriver;
 
             if (FindDevice(out deviceGuid, out devicePath))
             {
@@ -234,9 +219,13 @@ namespace PyMCE.Core.Device
 
         #endregion
 
+        #endregion
+
+        #region Internal Methods
+
         internal static bool CheckAutomaticButtons()
         {
-            using (RegistryKey key = Registry.LocalMachine.OpenSubKey(AutomaticButtonsRegKey, false))
+            using (var key = Registry.LocalMachine.OpenSubKey(AutomaticButtonsRegKey, false))
             {
                 return (key.GetValue("CodeSetNum0", null) != null);
             }
@@ -244,7 +233,7 @@ namespace PyMCE.Core.Device
 
         internal static void EnableAutomaticButtons()
         {
-            using (RegistryKey key = Registry.LocalMachine.OpenSubKey(AutomaticButtonsRegKey, true))
+            using (var key = Registry.LocalMachine.OpenSubKey(AutomaticButtonsRegKey, true))
             {
                 key.SetValue("CodeSetNum0", 1, RegistryValueKind.DWord);
                 key.SetValue("CodeSetNum1", 2, RegistryValueKind.DWord);
@@ -255,7 +244,7 @@ namespace PyMCE.Core.Device
 
         internal static void DisableAutomaticButtons()
         {
-            using (RegistryKey key = Registry.LocalMachine.OpenSubKey(AutomaticButtonsRegKey, true))
+            using (var key = Registry.LocalMachine.OpenSubKey(AutomaticButtonsRegKey, true))
             {
                 key.DeleteValue("CodeSetNum0", false);
                 key.DeleteValue("CodeSetNum1", false);
@@ -274,8 +263,8 @@ namespace PyMCE.Core.Device
             // Stop Microsoft MCE ehRecvr, mcrdsvc and ehSched processes (if they exist)
             try
             {
-                ServiceController[] services = ServiceController.GetServices();
-                foreach (ServiceController service in services)
+                var services = ServiceController.GetServices();
+                foreach (var service in services)
                 {
                     if (service.ServiceName.Equals("ehRecvr", StringComparison.OrdinalIgnoreCase))
                     {
@@ -297,36 +286,23 @@ namespace PyMCE.Core.Device
                     }
                 }
             }
-#if TRACE
             catch (Exception ex)
             {
                 Trace.WriteLine(ex.ToString());
             }
-#else
-      catch
-      {
-      }
-#endif
 
             // XP & Vista ...
             // Kill Microsoft MCE ehtray process (if it exists)
             try
             {
-                Process[] processes = Process.GetProcesses();
-                foreach (Process proc in processes)
-                    if (proc.ProcessName.Equals("ehtray", StringComparison.OrdinalIgnoreCase))
-                        proc.Kill();
+                var processes = Process.GetProcesses();
+                foreach (var proc in processes.Where(proc => proc.ProcessName.Equals("ehtray", StringComparison.OrdinalIgnoreCase)))
+                    proc.Kill();
             }
-#if TRACE
             catch (Exception ex)
             {
                 Trace.WriteLine(ex.ToString());
             }
-#else
-      catch
-      {
-      }
-#endif
         }
 
         private static bool FindDevice(out Guid deviceGuid, out string devicePath)
@@ -363,5 +339,7 @@ namespace PyMCE.Core.Device
 
             return false;
         }
+
+        #endregion
     }
 }
