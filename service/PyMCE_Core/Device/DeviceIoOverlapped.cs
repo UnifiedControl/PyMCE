@@ -26,7 +26,7 @@ using System;
 using System.Runtime.InteropServices;
 using System.Threading;
 
-namespace PyMCE_Core.Device
+namespace PyMCE.Core.Device
 {
     /// <summary>
     /// 32 and 64-bit compatible NativeOverlapped wrapper.

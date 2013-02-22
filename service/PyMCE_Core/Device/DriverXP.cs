@@ -22,10 +22,10 @@
 // http://www.gnu.org/copyleft/gpl.html
 #endregion
 
+using PyMCE.Core.Infrared;
 using System;
-using PyMCE_Core.Infrared;
 
-namespace PyMCE_Core.Device
+namespace PyMCE.Core.Device
 {
     internal class DriverXP : Driver
     {
@@ -59,7 +59,7 @@ namespace PyMCE_Core.Device
             throw new NotImplementedException();
         }
 
-        public override Transceiver.LearnStatus Learn(int learnTimeout, out IRCode learned)
+        public override LearnStatus Learn(int learnTimeout, out IRCode learned)
         {
             throw new NotImplementedException();
         }

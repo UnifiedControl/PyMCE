@@ -23,8 +23,10 @@
 #endregion
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
-namespace PyMCE_Core.Infrared
+namespace PyMCE.Core.Infrared
 {
     /// <summary>
     /// Philips Pronto interface class.

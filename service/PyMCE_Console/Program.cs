@@ -23,7 +23,7 @@
 #endregion
 
 using System;
-using PyMCE_Core.Device;
+using PyMCE.Core.Device;
 
 namespace PyMCE_Console
 {
@@ -45,7 +45,7 @@ namespace PyMCE_Console
                 switch(line)
                 {
                     case "learn":
-                        transceiver.Learn(out learned);
+                        Console.WriteLine("Learn Result: " + transceiver.Learn(out learned));
                         break;
                     case "send":
                         if(learned != null)

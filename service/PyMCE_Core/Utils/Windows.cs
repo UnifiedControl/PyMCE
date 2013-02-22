@@ -27,7 +27,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
-namespace PyMCE_Core.Utils
+namespace PyMCE.Core.Utils
 {
     class Windows
     {

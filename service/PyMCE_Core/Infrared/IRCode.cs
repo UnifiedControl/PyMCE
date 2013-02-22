@@ -26,7 +26,8 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
-namespace PyMCE_Core.Infrared
+
+namespace PyMCE.Core.Infrared
 {
     /// <summary>
     /// Encapsulates an MCE compatible IR Code.

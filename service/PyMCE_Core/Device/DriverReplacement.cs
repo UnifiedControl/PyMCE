@@ -23,9 +23,9 @@
 #endregion
 
 using System;
-using PyMCE_Core.Infrared;
+using PyMCE.Core.Infrared;
 
-namespace PyMCE_Core.Device
+namespace PyMCE.Core.Device
 {
     internal class DriverReplacement : Driver
     {
@@ -59,7 +59,7 @@ namespace PyMCE_Core.Device
             throw new NotImplementedException();
         }
 
-        public override Transceiver.LearnStatus Learn(int learnTimeout, out IRCode learned)
+        public override LearnStatus Learn(int learnTimeout, out IRCode learned)
         {
             throw new NotImplementedException();
         }

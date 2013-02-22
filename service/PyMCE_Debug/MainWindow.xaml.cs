@@ -22,7 +22,7 @@
 // http://www.gnu.org/copyleft/gpl.html
 #endregion
 
-using PyMCE_Core.Device;
+using PyMCE.Core.Device;
 using System.Windows;
 
 namespace PyMCE_Debug

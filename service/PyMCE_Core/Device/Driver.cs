@@ -23,14 +23,18 @@
 #endregion
 
 using Microsoft.Win32.SafeHandles;
-using PyMCE_Core.Infrared;
+using PyMCE.Core.Infrared;
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 
-namespace PyMCE_Core.Device
+namespace PyMCE.Core.Device
 {
+    /// <summary>
+    /// Base class for the different MCE device driver access classes.
+    /// </summary>
     internal abstract class Driver
     {
         #region Constants
@@ -153,7 +157,7 @@ namespace PyMCE_Core.Device
 
         #endregion
 
-        #endregion
+        #endregion Enumerations
 
         #region Structures
 
@@ -195,7 +199,7 @@ namespace PyMCE_Core.Device
 
         #endregion
 
-        #endregion
+        #endregion Structures
 
         #region Interop
 
@@ -270,29 +274,39 @@ namespace PyMCE_Core.Device
         private static extern bool SetupDiDestroyDeviceInfoList(
           IntPtr handle);
 
-        #endregion
+        #endregion Interop
 
         #region Variables
 
-        protected Guid DeviceGuid;
-        protected string DevicePath;
+        protected Guid _deviceGuid;
+        protected string _devicePath;
 
-        #endregion
+        //protected KeyboardCallback _keyboardCallback;
+        //protected MouseCallback _mouseCallback;
+        //protected RemoteCallback _remoteCallback;
 
-        #region Constructor
+        #endregion Variables
 
-        protected Driver() { }
+        #region Constructors
+
+        protected Driver()
+        {
+        }
 
         protected Driver(Guid deviceGuid, string devicePath)
         {
-            if(String.IsNullOrEmpty(devicePath))
+            if (String.IsNullOrEmpty(devicePath))
                 throw new ArgumentNullException("devicePath");
 
-            DeviceGuid = deviceGuid;
-            DevicePath = devicePath;
+            _deviceGuid = deviceGuid;
+            _devicePath = devicePath;
+
+            //_remoteCallback = remoteCallback;
+            //_keyboardCallback = keyboardCallback;
+            //_mouseCallback = mouseCallback;
         }
 
-        #endregion
+        #endregion Constructors
 
         #region Abstract Methods
 
@@ -322,7 +336,7 @@ namespace PyMCE_Core.Device
         /// <param name="learnTimeout">How long to wait before aborting learn.</param>
         /// <param name="learned">Newly learned IR Command.</param>
         /// <returns>Learn status.</returns>
-        public abstract Transceiver.LearnStatus Learn(int learnTimeout, out IRCode learned);
+        public abstract LearnStatus Learn(int learnTimeout, out IRCode learned);
 
         /// <summary>
         /// Send an IR Command.
@@ -331,26 +345,32 @@ namespace PyMCE_Core.Device
         /// <param name="port">IR port to send to.</param>
         public abstract void Send(IRCode code, int port);
 
-        #endregion
+        #endregion Abstract Methods
 
         #region Static Methods
 
+        /// <summary>
+        /// Find the device path for the supplied Device Class Guid.
+        /// </summary>
+        /// <param name="classGuid">GUID to locate device with.</param>
+        /// <returns>Device path.</returns>
         public static string Find(Guid classGuid)
         {
-            var handle = SetupDiGetClassDevs(ref classGuid, null, IntPtr.Zero, Digcfs.DeviceInterface | Digcfs.Present);
+            IntPtr handle = SetupDiGetClassDevs(ref classGuid, null, IntPtr.Zero, Digcfs.DeviceInterface | Digcfs.Present);
 
             if (handle.ToInt32() == -1)
                 return null;
 
-            for (var deviceIndex = 0; ; deviceIndex++)
+            for (int deviceIndex = 0; ; deviceIndex++)
             {
-                var deviceInfoData = new DeviceInfoData();
+                DeviceInfoData deviceInfoData = new DeviceInfoData();
                 deviceInfoData.Size = Marshal.SizeOf(deviceInfoData);
 
                 if (!SetupDiEnumDeviceInfo(handle, deviceIndex, ref deviceInfoData))
                 {
-                    var lastError = Marshal.GetLastWin32Error();
+                    int lastError = Marshal.GetLastWin32Error();
 
+                    // out of devices or do we have an error?
                     if (lastError != ErrorNoMoreItems && lastError != ErrorModNotFound)
                     {
                         SetupDiDestroyDeviceInfoList(handle);
@@ -361,7 +381,7 @@ namespace PyMCE_Core.Device
                     break;
                 }
 
-                var deviceInterfaceData = new DeviceInterfaceData();
+                DeviceInterfaceData deviceInterfaceData = new DeviceInterfaceData();
                 deviceInterfaceData.Size = Marshal.SizeOf(deviceInterfaceData);
 
                 if (!SetupDiEnumDeviceInterfaces(handle, ref deviceInfoData, ref classGuid, 0, ref deviceInterfaceData))
@@ -373,19 +393,23 @@ namespace PyMCE_Core.Device
                 uint cbData = 0;
 
                 if (
-                    !SetupDiGetDeviceInterfaceDetail(handle, ref deviceInterfaceData, IntPtr.Zero, 0, ref cbData,
-                                                     IntPtr.Zero) && cbData == 0)
+                  !SetupDiGetDeviceInterfaceDetail(handle, ref deviceInterfaceData, IntPtr.Zero, 0, ref cbData, IntPtr.Zero) &&
+                  cbData == 0)
                 {
                     SetupDiDestroyDeviceInfoList(handle);
                     throw new Win32Exception(Marshal.GetLastWin32Error());
                 }
 
-                var deviceInterfaceDetailData = new DeviceInterfaceDetailData();
-                deviceInterfaceDetailData.Size = IntPtr.Size == 8 ? 8 : 5;
+                DeviceInterfaceDetailData deviceInterfaceDetailData = new DeviceInterfaceDetailData();
+                if (IntPtr.Size == 8)
+                    deviceInterfaceDetailData.Size = 8;
+                else
+                    deviceInterfaceDetailData.Size = 5;
+
 
                 if (
-                    !SetupDiGetDeviceInterfaceDetail(handle, ref deviceInterfaceData, ref deviceInterfaceDetailData,
-                                                     cbData, IntPtr.Zero, IntPtr.Zero))
+                  !SetupDiGetDeviceInterfaceDetail(handle, ref deviceInterfaceData, ref deviceInterfaceDetailData, cbData,
+                                                   IntPtr.Zero, IntPtr.Zero))
                 {
                     SetupDiDestroyDeviceInfoList(handle);
                     throw new Win32Exception(Marshal.GetLastWin32Error());
@@ -401,25 +425,129 @@ namespace PyMCE_Core.Device
             return null;
         }
 
+        #endregion Static Methods
+
+        #region Debug
+
+        protected static StreamWriter _debugFile;
+
+        /// <summary>
+        /// Opens a debug output file.
+        /// </summary>
+        /// <param name="fileName">Name of the file.</param>
+        protected static void DebugOpen(string fileName)
+        {
+            try
+            {
+#if TEST_APPLICATION
+        string path = fileName;
+#else
+                string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                                           String.Format("IR Server Suite\\Logs\\{0}", fileName));
+#endif
+                _debugFile = new StreamWriter(path, false);
+                _debugFile.AutoFlush = true;
+            }
+#if TRACE
+            catch (Exception ex)
+            {
+                Trace.WriteLine(ex.ToString());
+#else
+      catch
+      {
+#endif
+                _debugFile = null;
+            }
+        }
+
+        /// <summary>
+        /// Closes the debug output file.
+        /// </summary>
+        protected static void DebugClose()
+        {
+            if (_debugFile != null)
+            {
+                _debugFile.Close();
+                _debugFile.Dispose();
+                _debugFile = null;
+            }
+        }
+
+        /// <summary>
+        /// Writes a line to the debug output file.
+        /// </summary>
+        /// <param name="line">The line.</param>
+        /// <param name="args">Formatting arguments.</param>
+        protected static void DebugWriteLine(string line, params object[] args)
+        {
+            if (_debugFile != null)
+            {
+                _debugFile.Write("{0:yyyy-MM-dd HH:mm:ss.ffffff} - ", DateTime.Now);
+                _debugFile.WriteLine(line, args);
+            }
+#if TRACE
+            else
+            {
+                Trace.WriteLine(String.Format(line, args));
+            }
+#endif
+        }
+
+        /// <summary>
+        /// Writes a string to the debug output file.
+        /// </summary>
+        /// <param name="text">The string to write.</param>
+        /// <param name="args">Formatting arguments.</param>
+        protected static void DebugWrite(string text, params object[] args)
+        {
+            if (_debugFile != null)
+            {
+                _debugFile.Write(text, args);
+            }
+#if TRACE
+            else
+            {
+                Trace.Write(String.Format(text, args));
+            }
+#endif
+        }
+
+        /// <summary>
+        /// Writes a new line to the debug output file.
+        /// </summary>
+        protected static void DebugWriteNewLine()
+        {
+            if (_debugFile != null)
+            {
+                _debugFile.WriteLine();
+            }
+#if TRACE
+            else
+            {
+                Trace.WriteLine(String.Empty);
+            }
+#endif
+        }
+
         /// <summary>
         /// Dumps an Array to the debug output file.
         /// </summary>
         /// <param name="array">The array.</param>
         protected static void DebugDump(Array array)
         {
-            foreach (var item in array)
+            foreach (object item in array)
             {
-                if (item is byte) Debug.Write(string.Format("{0:X2}", (byte)item));
-                else if (item is ushort) Debug.Write(string.Format("{0:X4}", (ushort)item));
-                else if (item is int) Debug.Write(string.Format("{1}{0}", (int)item, (int)item > 0 ? "+" : String.Empty));
-                else Debug.Write(string.Format("{0}", item));
+                if (item is byte) DebugWrite("{0:X2}", (byte)item);
+                else if (item is ushort) DebugWrite("{0:X4}", (ushort)item);
+                else if (item is int) DebugWrite("{1}{0}", (int)item, (int)item > 0 ? "+" : String.Empty);
+                else DebugWrite("{0}", item);
 
-                Debug.Write(", ");
+                DebugWrite(", ");
             }
 
-            Debug.WriteLine("");
+            DebugWriteNewLine();
         }
 
-        #endregion
+        #endregion Debug
     }
 }

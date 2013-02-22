@@ -24,13 +24,60 @@
 
 using System;
 using System.Diagnostics;
-using PyMCE_Core.Infrared;
+using System.ServiceProcess;
+using PyMCE.Core.Infrared;
+using Microsoft.Win32;
 
-namespace PyMCE_Core.Device
+namespace PyMCE.Core.Device
 {
+    #region Enumerations
+
+    /// <summary>
+    /// The blaster port to send IR Commands to.
+    /// </summary>
+    public enum BlasterPort
+    {
+        /// <summary>
+        /// Send IR Commands to both blaster ports.
+        /// </summary>
+        Both = 0,
+        /// <summary>
+        /// Send IR Commands to blaster port 1 only.
+        /// </summary>
+        Port_1 = 1,
+        /// <summary>
+        /// Send IR Commands to blaster port 2 only.
+        /// </summary>
+        Port_2 = 2
+    }
+
+    /// <summary>
+    /// Provides information about the status of learning an infrared command.
+    /// </summary>
+    public enum LearnStatus
+    {
+        /// <summary>
+        /// Failed to learn infrared command.
+        /// </summary>
+        Failure,
+        /// <summary>
+        /// Succeeded in learning infrared command.
+        /// </summary>
+        Success,
+        /// <summary>
+        /// Infrared command learning timed out.
+        /// </summary>
+        Timeout,
+    }
+
+    #endregion
+
     public class Transceiver
     {
         #region Constants
+
+        private const string AutomaticButtonsRegKey =
+            @"SYSTEM\CurrentControlSet\Services\HidIr\Remotes\745a17a0-74d3-11d0-b6fe-00a0c90f57da";
 
         private const int VistaVersionNumber = 6;
 
@@ -40,59 +87,19 @@ namespace PyMCE_Core.Device
 
         #endregion Constants
 
-        #region Enumerations
-
-        /// <summary>
-        /// The blaster port to send IR Commands to.
-        /// </summary>
-        public enum BlasterPort
-        {
-            /// <summary>
-            /// Send IR Commands to both blaster ports.
-            /// </summary>
-            Both = 0,
-            /// <summary>
-            /// Send IR Commands to blaster port 1 only.
-            /// </summary>
-            Port_1 = 1,
-            /// <summary>
-            /// Send IR Commands to blaster port 2 only.
-            /// </summary>
-            Port_2 = 2
-        }
-
-        /// <summary>
-        /// Provides information about the status of learning an infrared command.
-        /// </summary>
-        public enum LearnStatus
-        {
-            /// <summary>
-            /// Failed to learn infrared command.
-            /// </summary>
-            Failure,
-            /// <summary>
-            /// Succeeded in learning infrared command.
-            /// </summary>
-            Success,
-            /// <summary>
-            /// Infrared command learning timed out.
-            /// </summary>
-            Timeout,
-        }
-
-        #endregion
-
         #region Variables
 
         #region Configuration
 
-        // TODO: Move to Configuration class
+        private bool _disableAutomaticButtons;
+        private bool _disableMceServices = true;
 
         private int _learnTimeout = 10000;
 
         #endregion
 
         private Driver _driver;
+        private bool _ignoreAutomaticButtons;
 
         #endregion
 
@@ -145,12 +152,31 @@ namespace PyMCE_Core.Device
 
         public void Start()
         {
-            Debug.WriteLine("Start Device.Transceiver");
+#if TRACE
+            Trace.WriteLine("Start MicrosoftMceTransceiver");
+#endif
+            if (_driver != null)
+                throw new InvalidOperationException("MicrosoftMceTransceiver already started");
+
+            //LoadSettings();
+
+            // Put this in a try...catch so that if the registry keys don't exist we don't throw an ugly exception.
+            try
+            {
+                _ignoreAutomaticButtons = CheckAutomaticButtons();
+            }
+            catch
+            {
+                _ignoreAutomaticButtons = false;
+            }
+
+            if (_disableMceServices)
+                DisableMceServices();
 
             Guid deviceGuid;
             string devicePath;
 
-            Driver driver = null;
+            Driver newDriver = null;
 
             if (FindDevice(out deviceGuid, out devicePath))
             {
@@ -158,16 +184,16 @@ namespace PyMCE_Core.Device
                 {
                     if (Environment.OSVersion.Version.Major >= VistaVersionNumber)
                     {
-                        driver = new DriverVista(deviceGuid, devicePath);
+                        newDriver = new DriverVista(deviceGuid, devicePath);
                     }
                     else
                     {
-                        driver = new DriverXP(deviceGuid, devicePath);
+                        newDriver = new DriverXP(deviceGuid, devicePath);
                     }
                 }
                 else
                 {
-                    driver = new DriverReplacement(deviceGuid, devicePath);
+                    newDriver = new DriverReplacement(deviceGuid, devicePath);
                 }
             }
             else
@@ -175,9 +201,9 @@ namespace PyMCE_Core.Device
                 throw new InvalidOperationException("Device not found");
             }
 
-            _driver = driver;
+            newDriver.Start();
 
-            _driver.Start();
+            _driver = newDriver;
         }
 
         public void Suspend()
@@ -207,6 +233,101 @@ namespace PyMCE_Core.Device
         }
 
         #endregion
+
+        internal static bool CheckAutomaticButtons()
+        {
+            using (RegistryKey key = Registry.LocalMachine.OpenSubKey(AutomaticButtonsRegKey, false))
+            {
+                return (key.GetValue("CodeSetNum0", null) != null);
+            }
+        }
+
+        internal static void EnableAutomaticButtons()
+        {
+            using (RegistryKey key = Registry.LocalMachine.OpenSubKey(AutomaticButtonsRegKey, true))
+            {
+                key.SetValue("CodeSetNum0", 1, RegistryValueKind.DWord);
+                key.SetValue("CodeSetNum1", 2, RegistryValueKind.DWord);
+                key.SetValue("CodeSetNum2", 3, RegistryValueKind.DWord);
+                key.SetValue("CodeSetNum3", 4, RegistryValueKind.DWord);
+            }
+        }
+
+        internal static void DisableAutomaticButtons()
+        {
+            using (RegistryKey key = Registry.LocalMachine.OpenSubKey(AutomaticButtonsRegKey, true))
+            {
+                key.DeleteValue("CodeSetNum0", false);
+                key.DeleteValue("CodeSetNum1", false);
+                key.DeleteValue("CodeSetNum2", false);
+                key.DeleteValue("CodeSetNum3", false);
+            }
+        }
+
+        private static void DisableMceServices()
+        {
+            // "HKLM\SYSTEM\CurrentControlSet\Services\<service name>\Start"
+            // 2 for automatic, 3 manual , 4 disabled
+
+
+            // Vista ...
+            // Stop Microsoft MCE ehRecvr, mcrdsvc and ehSched processes (if they exist)
+            try
+            {
+                ServiceController[] services = ServiceController.GetServices();
+                foreach (ServiceController service in services)
+                {
+                    if (service.ServiceName.Equals("ehRecvr", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (service.Status != ServiceControllerStatus.Stopped &&
+                            service.Status != ServiceControllerStatus.StopPending)
+                            service.Stop();
+                    }
+                    else if (service.ServiceName.Equals("ehSched", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (service.Status != ServiceControllerStatus.Stopped &&
+                            service.Status != ServiceControllerStatus.StopPending)
+                            service.Stop();
+                    }
+                    else if (service.ServiceName.Equals("mcrdsvc", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (service.Status != ServiceControllerStatus.Stopped &&
+                            service.Status != ServiceControllerStatus.StopPending)
+                            service.Stop();
+                    }
+                }
+            }
+#if TRACE
+            catch (Exception ex)
+            {
+                Trace.WriteLine(ex.ToString());
+            }
+#else
+      catch
+      {
+      }
+#endif
+
+            // XP & Vista ...
+            // Kill Microsoft MCE ehtray process (if it exists)
+            try
+            {
+                Process[] processes = Process.GetProcesses();
+                foreach (Process proc in processes)
+                    if (proc.ProcessName.Equals("ehtray", StringComparison.OrdinalIgnoreCase))
+                        proc.Kill();
+            }
+#if TRACE
+            catch (Exception ex)
+            {
+                Trace.WriteLine(ex.ToString());
+            }
+#else
+      catch
+      {
+      }
+#endif
+        }
 
         private static bool FindDevice(out Guid deviceGuid, out string devicePath)
         {
