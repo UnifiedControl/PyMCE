@@ -1,5 +1,8 @@
-*.pyc
-/.idea
-/build
-/dist
-/PyMCE.egg-info
+bin/
+obj/
+
+*.pdb
+*.suo
+*.user
+
+/service/_ReSharper.PyMCE
