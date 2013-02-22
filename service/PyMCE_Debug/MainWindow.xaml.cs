@@ -24,17 +24,43 @@
 
 using PyMCE.Core.Device;
 using System.Windows;
+using PyMCE_Debug.Managers;
 
 namespace PyMCE_Debug
 {
     public partial class MainWindow : Window
     {
+        public LocalManager Local { get; set; }
+        public ServiceManager Service { get; set; }
+
         public MainWindow()
         {
-            InitializeComponent();
+            Local = new LocalManager();
+            Service = new ServiceManager();
 
-            var transceiver = new Transceiver();
-            transceiver.Start();
+            DataContext = this;
+
+            InitializeComponent();
+        }
+
+        private void LocalStart(object sender, RoutedEventArgs e)
+        {
+            Local.Start();
+        }
+
+        private void LocalStop(object sender, RoutedEventArgs e)
+        {
+            Local.Stop();
+        }
+
+        private void ServiceStart(object sender, RoutedEventArgs e)
+        {
+            Service.Start();
+        }
+
+        private void ServiceStop(object sender, RoutedEventArgs e)
+        {
+            Service.Stop();
         }
     }
 }
