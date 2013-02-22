@@ -766,7 +766,6 @@ namespace PyMCE.Core.Device
         private bool _deviceAvailable;
         private SafeFileHandle _eHomeHandle;
         private IRCode _learningCode;
-        //private NotifyWindow _notifyWindow;
 
         private Thread _readThread;
         private ReadThreadMode _readThreadMode;
@@ -805,7 +804,7 @@ namespace PyMCE.Core.Device
             structure.Receiver = receivePort;
             structure.Timeout = timeout;
 
-            IntPtr structPtr = IntPtr.Zero;
+            var structPtr = IntPtr.Zero;
 
             try
             {
@@ -846,7 +845,7 @@ namespace PyMCE.Core.Device
                 structure = new DeviceCapabilities32();
             }
 
-            IntPtr structPtr = IntPtr.Zero;
+            var structPtr = IntPtr.Zero;
 
             try
             {
@@ -875,11 +874,11 @@ namespace PyMCE.Core.Device
             _numTxPorts = Int32.Parse(structure.TransmitPorts.ToString());
             _learnPortMask = Int32.Parse(structure.LearningMask.ToString());
 
-            int receivePort = FirstLowBit(_learnPortMask);
+            var receivePort = FirstLowBit(_learnPortMask);
             if (receivePort != -1)
                 _receivePort = receivePort;
 
-            int learnPort = FirstHighBit(_learnPortMask);
+            var learnPort = FirstHighBit(_learnPortMask);
             _learnPort = learnPort != -1 ? learnPort : _receivePort;
 
             //DeviceCapabilityFlags flags = (DeviceCapabilityFlags)structure.DetailsFlags.ToInt32();
@@ -913,7 +912,7 @@ namespace PyMCE.Core.Device
                 structure = new AvailableBlasters32();
             }
 
-            IntPtr structPtr = IntPtr.Zero;
+            var structPtr = IntPtr.Zero;
 
             try
             {
@@ -967,7 +966,7 @@ namespace PyMCE.Core.Device
             if (carrier == IRCode.CarrierFrequencyUnknown)
                 carrier = IRCode.CarrierFrequencyDefault;
 
-            TransmitMode mode = GetTransmitMode(carrier);
+            var mode = GetTransmitMode(carrier);
             if (mode == TransmitMode.CarrierMode)
                 transmitParams.CarrierPeriod = GetCarrierPeriod(carrier);
             else
@@ -990,16 +989,16 @@ namespace PyMCE.Core.Device
             transmitChunk.RepeatCount = 1;
             transmitChunk.ByteCount = irData.Length;
 
-            int bufferSize = irData.Length + Marshal.SizeOf(transmitChunk) + 8;
-            byte[] buffer = new byte[bufferSize];
+            var bufferSize = irData.Length + Marshal.SizeOf(transmitChunk) + 8;
+            var buffer = new byte[bufferSize];
 
-            byte[] rawTransmitChunk = RawSerialize(transmitChunk);
+            var rawTransmitChunk = RawSerialize(transmitChunk);
             Array.Copy(rawTransmitChunk, buffer, rawTransmitChunk.Length);
 
             Array.Copy(irData, 0, buffer, rawTransmitChunk.Length, irData.Length);
 
-            IntPtr structurePtr = IntPtr.Zero;
-            IntPtr bufferPtr = IntPtr.Zero;
+            var structurePtr = IntPtr.Zero;
+            var bufferPtr = IntPtr.Zero;
 
             try
             {
@@ -1038,64 +1037,62 @@ namespace PyMCE.Core.Device
             {
                 SafeHandle safeWaitHandle = waitHandle.SafeWaitHandle;
 
-                bool success = false;
+                var success = false;
                 safeWaitHandle.DangerousAddRef(ref success);
                 if (!success)
                     throw new InvalidOperationException("Failed to initialize safe wait handle");
 
                 try
                 {
-                    int lastError;
+                    var dangerousWaitHandle = safeWaitHandle.DangerousGetHandle();
 
-                    IntPtr dangerousWaitHandle = safeWaitHandle.DangerousGetHandle();
-
-                    DeviceIoOverlapped overlapped = new DeviceIoOverlapped();
+                    var overlapped = new DeviceIoOverlapped();
                     overlapped.ClearAndSetEvent(dangerousWaitHandle);
 
-                    bool deviceIoControl = DeviceIoControl(_eHomeHandle, ioControlCode, inBuffer, inBufferSize,
-                                                           outBuffer,
-                                                           outBufferSize, out bytesReturned, overlapped.Overlapped);
-                    lastError = Marshal.GetLastWin32Error();
+                    var deviceIoControl = DeviceIoControl(_eHomeHandle, ioControlCode, inBuffer, inBufferSize,
+                                                          outBuffer,
+                                                          outBufferSize, out bytesReturned, overlapped.Overlapped);
 
-                    if (!deviceIoControl)
+                    var lastError = Marshal.GetLastWin32Error();
+
+                    if (deviceIoControl) return;
+
+                    // Now also handles Operation Aborted and Bad Command errors.
+                    switch (lastError)
                     {
-                        // Now also handles Operation Aborted and Bad Command errors.
-                        switch (lastError)
-                        {
-                            case ErrorIoPending:
-                                waitHandle.WaitOne();
+                        case ErrorIoPending:
+                            waitHandle.WaitOne();
 
-                                bool getOverlapped = GetOverlappedResult(_eHomeHandle, overlapped.Overlapped,
-                                                                         out bytesReturned, false);
-                                lastError = Marshal.GetLastWin32Error();
+                            var getOverlapped = GetOverlappedResult(_eHomeHandle, overlapped.Overlapped,
+                                                                    out bytesReturned, false);
+                            lastError = Marshal.GetLastWin32Error();
 
-                                if (!getOverlapped)
-                                {
-                                    if (lastError == ErrorBadCommand)
-                                        goto case ErrorBadCommand;
-                                    if (lastError == ErrorOperationAborted)
-                                        goto case ErrorOperationAborted;
-                                    throw new Win32Exception(lastError);
-                                }
-                                break;
+                            if (!getOverlapped)
+                            {
+                                if (lastError == ErrorBadCommand)
+                                    goto case ErrorBadCommand;
+                                if (lastError == ErrorOperationAborted)
+                                    goto case ErrorOperationAborted;
+                                throw new Win32Exception(lastError);
+                            }
+                            break;
 
-                            case ErrorBadCommand:
-                                if (Thread.CurrentThread == _readThread)
-                                    //Cause receive restart
-                                    _deviceReceiveStarted = false;
-                                break;
-
-                            case ErrorOperationAborted:
-                                if (Thread.CurrentThread != _readThread)
-                                    throw new Win32Exception(lastError);
-
+                        case ErrorBadCommand:
+                            if (Thread.CurrentThread == _readThread)
                                 //Cause receive restart
                                 _deviceReceiveStarted = false;
-                                break;
+                            break;
 
-                            default:
+                        case ErrorOperationAborted:
+                            if (Thread.CurrentThread != _readThread)
                                 throw new Win32Exception(lastError);
-                        }
+
+                            //Cause receive restart
+                            _deviceReceiveStarted = false;
+                            break;
+
+                        default:
+                            throw new Win32Exception(lastError);
                     }
                 }
                 catch
@@ -1111,8 +1108,6 @@ namespace PyMCE.Core.Device
                     safeWaitHandle.DangerousRelease();
                 }
             }
-            //IrssUtils.IrssLog.Debug("IoControl: End  of [{0}]", ioControlCode.ToString());
-            //IrssUtils.IrssLog.Close();
         }
 
         #endregion Device Control Functions
@@ -1134,18 +1129,10 @@ namespace PyMCE.Core.Device
                 _isSystem64Bit = Utils.Windows.IsSystem64Bit();
                 DebugWriteLine("Operating system arch is {0}", _isSystem64Bit ? "x64" : "x86");
 
-                //_notifyWindow = new NotifyWindow();
-                //_notifyWindow.Create();
-                //_notifyWindow.Class = _deviceGuid;
-                //_notifyWindow.RegisterDeviceArrival();
-
                 OpenDevice();
                 InitializeDevice();
 
                 StartReadThread(ReadThreadMode.Receiving);
-
-                //_notifyWindow.DeviceArrival += OnDeviceArrival;
-                //_notifyWindow.DeviceRemoval += OnDeviceRemoval;
             }
             catch
             {
@@ -1163,9 +1150,6 @@ namespace PyMCE.Core.Device
 
             try
             {
-                //_notifyWindow.DeviceArrival -= OnDeviceArrival;
-                //_notifyWindow.DeviceRemoval -= OnDeviceRemoval;
-
                 StopReadThread();
                 CloseDevice();
             }
@@ -1176,10 +1160,6 @@ namespace PyMCE.Core.Device
             }
             finally
             {
-                //_notifyWindow.UnregisterDeviceArrival();
-                //_notifyWindow.Dispose();
-                //_notifyWindow = null;
-
                 DebugClose();
             }
         }
@@ -1229,7 +1209,7 @@ namespace PyMCE.Core.Device
             learned = null;
             _learningCode = new IRCode();
 
-            int learnStartTick = Environment.TickCount;
+            var learnStartTick = Environment.TickCount;
 
             // Wait for the learning to finish ...
             while (_readThreadMode == ReadThreadMode.Learning && Environment.TickCount < learnStartTick + learnTimeout)
@@ -1237,11 +1217,11 @@ namespace PyMCE.Core.Device
 
             DebugWriteLine("End Learn");
 
-            ReadThreadMode modeWas = _readThreadMode;
+            var modeWas = _readThreadMode;
 
             RestartReadThread(ReadThreadMode.Receiving);
 
-            LearnStatus status = LearnStatus.Failure;
+            var status = LearnStatus.Failure;
 
             switch (modeWas)
             {
@@ -1277,9 +1257,9 @@ namespace PyMCE.Core.Device
             DebugWrite("Send(): ");
             DebugDump(code.TimingData);
 
-            byte[] data = DataPacket(code);
+            var data = DataPacket(code);
 
-            int portMask = 0;
+            var portMask = 0;
             // Hardware ports map to bits in mask with Port 1 at left, ascending to right
             switch ((BlasterPort) port)
             {
@@ -1324,14 +1304,14 @@ namespace PyMCE.Core.Device
             if (code.TimingData.Length == 0)
                 return null;
 
-            byte[] data = new byte[code.TimingData.Length*4];
+            var data = new byte[code.TimingData.Length*4];
 
-            int dataIndex = 0;
-            for (int timeIndex = 0; timeIndex < code.TimingData.Length; timeIndex++)
+            var dataIndex = 0;
+            foreach (var timing in code.TimingData)
             {
-                uint time = (uint) (50*(int) Math.Round((double) code.TimingData[timeIndex]/50));
+                var time = (uint) (50*(int) Math.Round((double) timing/50));
 
-                for (int timeShift = 0; timeShift < 4; timeShift++)
+                for (var timeShift = 0; timeShift < 4; timeShift++)
                 {
                     data[dataIndex++] = (byte) (time & 0xFF);
                     time >>= 8;
@@ -1373,7 +1353,7 @@ namespace PyMCE.Core.Device
             // Alternative to StopReadThread() ... StartReadThread(). Avoids Thread.Abort.
 
             _readThreadModeNext = mode;
-            int numTriesLeft = MaxReadThreadTries;
+            var numTriesLeft = MaxReadThreadTries;
 
             // Simple, optimistic wait for read thread to respond. Has room for improvement, but tends to work first time in practice.
             while (_readThreadMode != _readThreadModeNext && numTriesLeft-- != 0)
@@ -1399,9 +1379,6 @@ namespace PyMCE.Core.Device
                 DebugWriteLine("Read thread already stopped");
                 return;
             }
-
-            //if (_eHomeHandle != null)
-            //  CancelIo(_eHomeHandle);
 
             if (_readThread.IsAlive)
             {
@@ -1429,22 +1406,21 @@ namespace PyMCE.Core.Device
                 return;
             }
 
-            _eHomeHandle = CreateFile(_devicePath, CreateFileAccessTypes.GenericRead | CreateFileAccessTypes.GenericWrite,
+            _eHomeHandle = CreateFile(_devicePath,
+                                      CreateFileAccessTypes.GenericRead | CreateFileAccessTypes.GenericWrite,
                                       CreateFileShares.None, IntPtr.Zero, CreateFileDisposition.OpenExisting,
                                       CreateFileAttributes.Overlapped, IntPtr.Zero);
-            int lastError = Marshal.GetLastWin32Error();
+            var lastError = Marshal.GetLastWin32Error();
             if (_eHomeHandle.IsInvalid)
             {
                 _eHomeHandle = null;
                 throw new Win32Exception(lastError);
             }
 
-            bool success = false;
+            var success = false;
             _eHomeHandle.DangerousAddRef(ref success);
             if (success)
             {
-                //_notifyWindow.UnregisterDeviceArrival();  // If the device is present then we don't want to monitor arrival.
-                //_notifyWindow.RegisterDeviceRemoval(_eHomeHandle.DangerousGetHandle());
             }
             else
             {
@@ -1472,8 +1448,6 @@ namespace PyMCE.Core.Device
                 return;
             }
 
-            //_notifyWindow.UnregisterDeviceRemoval();
-
             _eHomeHandle.DangerousRelease();
 
             _eHomeHandle.Dispose();
@@ -1481,35 +1455,11 @@ namespace PyMCE.Core.Device
         }
 
         /// <summary>
-        /// Called when device arrival is notified.
-        /// </summary>
-        private void OnDeviceArrival()
-        {
-            DebugWriteLine("OnDeviceArrival()");
-
-            OpenDevice();
-            InitializeDevice();
-
-            StartReadThread(ReadThreadMode.Receiving);
-        }
-
-        /// <summary>
-        /// Called when device removal is notified.
-        /// </summary>
-        private void OnDeviceRemoval()
-        {
-            DebugWriteLine("OnDeviceRemoval()");
-
-            StopReadThread();
-            CloseDevice();
-        }
-
-        /// <summary>
         /// Device read thread method.
         /// </summary>
         private void ReadThread()
         {
-            IntPtr receiveParamsPtr = IntPtr.Zero;
+            var receiveParamsPtr = IntPtr.Zero;
 
             try
             {
@@ -1523,7 +1473,7 @@ namespace PyMCE.Core.Device
                     receiveParams = new ReceiveParams32();
                 }
 
-                int receiveParamsSize = Marshal.SizeOf(receiveParams) + DeviceBufferSize + 8;
+                var receiveParamsSize = Marshal.SizeOf(receiveParams) + DeviceBufferSize + 8;
                 receiveParamsPtr = Marshal.AllocHGlobal(receiveParamsSize);
 
                 receiveParams.ByteCount = DeviceBufferSize;
@@ -1534,12 +1484,8 @@ namespace PyMCE.Core.Device
                     // Cycle thread if device stopped reading.
                     if (!_deviceReceiveStarted)
                     {
-                        if (_readThreadModeNext == ReadThreadMode.Receiving)
-                            StartReceive(_receivePort, PacketTimeout);
-                        else
-                        {
-                            StartReceive(_learnPort, PacketTimeout);
-                        }
+                        StartReceive(_readThreadModeNext == ReadThreadMode.Receiving ? _receivePort : _learnPort,
+                                     PacketTimeout);
                         _readThreadMode = _readThreadModeNext;
                         _deviceReceiveStarted = true;
                     }
@@ -1549,17 +1495,17 @@ namespace PyMCE.Core.Device
 
                     if (bytesRead > Marshal.SizeOf(receiveParams))
                     {
-                        int dataSize = bytesRead;
+                        var dataSize = bytesRead;
 
                         bytesRead -= Marshal.SizeOf(receiveParams);
 
-                        byte[] packetBytes = new byte[bytesRead];
-                        byte[] dataBytes = new byte[dataSize];
+                        var packetBytes = new byte[bytesRead];
+                        var dataBytes = new byte[dataSize];
 
                         Marshal.Copy(receiveParamsPtr, dataBytes, 0, dataSize);
                         Array.Copy(dataBytes, dataSize - bytesRead, packetBytes, 0, bytesRead);
 
-                        int[] timingData = GetTimingDataFromPacket(packetBytes);
+                        var timingData = GetTimingDataFromPacket(packetBytes);
 
                         DebugWrite("{0:yyyy-MM-dd HH:mm:ss.ffffff} - ", DateTime.Now);
                         DebugWrite("Received timing:    ");
@@ -1586,10 +1532,10 @@ namespace PyMCE.Core.Device
                             receiveParams2 =
                                 (ReceiveParams32) Marshal.PtrToStructure(receiveParamsPtr, receiveParams.GetType());
                         }
-                        DebugWriteLine("DataEnd {0}", System.Convert.ToInt64(receiveParams2.DataEnd));
-                        if (System.Convert.ToInt64(receiveParams2.DataEnd) != 0)
+                        DebugWriteLine("DataEnd {0}", Convert.ToInt64(receiveParams2.DataEnd));
+                        if (Convert.ToInt64(receiveParams2.DataEnd) != 0)
                         {
-                            _learningCode.Carrier = System.Convert.ToInt32(receiveParams2.CarrierFrequency);
+                            _learningCode.Carrier = Convert.ToInt32(receiveParams2.CarrierFrequency);
                             _readThreadMode = ReadThreadMode.LearningDone;
                         }
                     }
@@ -1627,14 +1573,14 @@ namespace PyMCE.Core.Device
 
         private static byte[] RawSerialize(object anything)
         {
-            int rawSize = Marshal.SizeOf(anything);
-            byte[] rawData = new byte[rawSize];
+            var rawSize = Marshal.SizeOf(anything);
+            var rawData = new byte[rawSize];
 
-            GCHandle handle = GCHandle.Alloc(rawData, GCHandleType.Pinned);
+            var handle = GCHandle.Alloc(rawData, GCHandleType.Pinned);
 
             try
             {
-                IntPtr buffer = handle.AddrOfPinnedObject();
+                var buffer = handle.AddrOfPinnedObject();
 
                 Marshal.StructureToPtr(anything, buffer, false);
             }
@@ -1648,10 +1594,10 @@ namespace PyMCE.Core.Device
 
         private static int GetHighBit(int mask, int bitCount)
         {
-            int count = 0;
-            for (int i = 0; i < 32; i++)
+            var count = 0;
+            for (var i = 0; i < 32; i++)
             {
-                int bitMask = 1 << i;
+                var bitMask = 1 << i;
 
                 if ((mask & bitMask) != 0)
                     if (++count == bitCount)
@@ -1663,7 +1609,7 @@ namespace PyMCE.Core.Device
 
         private static int FirstHighBit(int mask)
         {
-            for (int i = 0; i < 32; i++)
+            for (var i = 0; i < 32; i++)
                 if ((mask & (1 << i)) != 0)
                     return i;
 
@@ -1672,7 +1618,7 @@ namespace PyMCE.Core.Device
 
         private static int FirstLowBit(int mask)
         {
-            for (int i = 0; i < 32; i++)
+            for (var i = 0; i < 32; i++)
                 if ((mask & (1 << i)) == 0)
                     return i;
 
@@ -1686,19 +1632,16 @@ namespace PyMCE.Core.Device
 
         private static TransmitMode GetTransmitMode(int carrier)
         {
-            if (carrier > 100)
-                return TransmitMode.CarrierMode;
-
-            return TransmitMode.DCMode;
+            return carrier > 100 ? TransmitMode.CarrierMode : TransmitMode.DCMode;
         }
 
         private static int[] GetTimingDataFromPacket(byte[] packetBytes)
         {
-            int[] timingData = new int[packetBytes.Length/4];
+            var timingData = new int[packetBytes.Length/4];
 
-            int timingDataIndex = 0;
+            var timingDataIndex = 0;
 
-            for (int index = 0; index < packetBytes.Length; index += 4)
+            for (var index = 0; index < packetBytes.Length; index += 4)
                 timingData[timingDataIndex++] =
                     (packetBytes[index] +
                      (packetBytes[index + 1] << 8) +
