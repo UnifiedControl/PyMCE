@@ -719,7 +719,7 @@ namespace PyMCE.Core.Device
         /// <summary>
         /// Used to set the carrier mode for IR blasting.
         /// </summary>
-        private enum TransmitMode
+        internal enum TransmitMode
         {
             /// <summary>
             /// Carrier Mode.
@@ -1297,7 +1297,7 @@ namespace PyMCE.Core.Device
         /// </summary>
         /// <param name="code">IrCode to convert.</param>
         /// <returns>Raw device data.</returns>
-        private static byte[] DataPacket(IRCode code)
+        internal static byte[] DataPacket(IRCode code)
         {
             DebugWriteLine("DataPacket()");
 
@@ -1571,7 +1571,7 @@ namespace PyMCE.Core.Device
 
         #region Misc Methods
 
-        private static byte[] RawSerialize(object anything)
+        internal static byte[] RawSerialize(object anything)
         {
             var rawSize = Marshal.SizeOf(anything);
             var rawData = new byte[rawSize];
@@ -1592,7 +1592,7 @@ namespace PyMCE.Core.Device
             return rawData;
         }
 
-        private static int GetHighBit(int mask, int bitCount)
+        internal static int GetHighBit(int mask, int bitCount)
         {
             var count = 0;
             for (var i = 0; i < 32; i++)
@@ -1607,7 +1607,7 @@ namespace PyMCE.Core.Device
             return 0;
         }
 
-        private static int FirstHighBit(int mask)
+        internal static int FirstHighBit(int mask)
         {
             for (var i = 0; i < 32; i++)
                 if ((mask & (1 << i)) != 0)
@@ -1616,7 +1616,7 @@ namespace PyMCE.Core.Device
             return -1;
         }
 
-        private static int FirstLowBit(int mask)
+        internal static int FirstLowBit(int mask)
         {
             for (var i = 0; i < 32; i++)
                 if ((mask & (1 << i)) == 0)
@@ -1625,17 +1625,17 @@ namespace PyMCE.Core.Device
             return -1;
         }
 
-        private static int GetCarrierPeriod(int carrier)
+        internal static int GetCarrierPeriod(int carrier)
         {
             return (int) Math.Round(1000000.0/carrier);
         }
 
-        private static TransmitMode GetTransmitMode(int carrier)
+        internal static TransmitMode GetTransmitMode(int carrier)
         {
             return carrier > 100 ? TransmitMode.CarrierMode : TransmitMode.DCMode;
         }
 
-        private static int[] GetTimingDataFromPacket(byte[] packetBytes)
+        internal static int[] GetTimingDataFromPacket(byte[] packetBytes)
         {
             var timingData = new int[packetBytes.Length/4];
 
