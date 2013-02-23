@@ -34,10 +34,15 @@ namespace PyMCE_Debug.Managers
             get { return _transceiver; }
             set { _transceiver = value; }
         }
-        
-        public bool IsRunning
+
+        public bool ControlsEnabled
         {
-            get { return _transceiver.CurrentRunningState == RunningState.Started; }
+            get
+            {
+                if (_transceiver.CurrentRunningState != RunningState.Started)
+                    return false;
+                return _transceiver.CurrentReceivingState == ReceivingState.Receiving;
+            }
         }
 
         private string _status = "Idle";
@@ -61,8 +66,7 @@ namespace PyMCE_Debug.Managers
             Status = e.RunningState.ToString();
             ReceivingStatus = e.ReceivingState != ReceivingState.None ? e.ReceivingState.ToString() : "";
 
-            Console.WriteLine(IsRunning);
-            FirePropertyChanged("IsRunning"); // IsRunning automatically updates, fire a property changed event though.
+            FirePropertyChanged("ControlsEnabled");
         }
 
         public void Start()
@@ -73,6 +77,11 @@ namespace PyMCE_Debug.Managers
         public void Stop()
         {
             _transceiver.Stop();
+        }
+
+        public void Learn(LearnCompletedDelegate callback)
+        {
+            _transceiver.LearnAsync(callback);
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

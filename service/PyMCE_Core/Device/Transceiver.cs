@@ -73,6 +73,37 @@ namespace PyMCE.Core.Device
 
     #endregion
 
+    #region Delegates
+
+    public delegate LearnResult LearnDelegate();
+    public delegate void LearnCompletedDelegate(LearnResult result);
+
+    #endregion
+
+    public class LearnResult
+    {
+        public LearnStatus Status { get; private set; }
+        public byte[] Data { get; private set; }
+
+        internal LearnResult(LearnStatus status, byte[] data)
+        {
+            Status = status;
+            Data = data;
+        }
+    }
+
+    internal class LearnAsyncState
+    {
+        public LearnDelegate Delegate { get; private set; }
+        public LearnCompletedDelegate Callback { get; private set; }
+
+        public LearnAsyncState(LearnDelegate del, LearnCompletedDelegate callback)
+        {
+            Delegate = del;
+            Callback = callback;
+        }
+    }
+
     public class Transceiver
     {
         #region Constants
@@ -92,6 +123,8 @@ namespace PyMCE.Core.Device
 
         private bool _disableMceServices = true;
         private int _learnTimeout = 10000;
+
+        private object _learnLock = new object();
 
         #endregion
 
@@ -114,11 +147,38 @@ namespace PyMCE.Core.Device
         public LearnStatus Learn(out byte[] data)
         {
             IRCode code;
+            LearnStatus status;
 
-            var status = _driver.Learn(_learnTimeout, out code);
+            lock (_learnLock)
+            {
+                status = _driver.Learn(_learnTimeout, out code);
+            }
 
             data = code != null ? code.ToByteArray() : null;
             return status;
+        }
+
+        public LearnResult Learn()
+        {
+            byte[] data;
+            var status = Learn(out data);
+
+            return new LearnResult(status, data);
+        }
+
+        public void LearnAsync(LearnCompletedDelegate callback)
+        {
+            LearnDelegate learnDelegate = Learn;
+
+            learnDelegate.BeginInvoke(LearnAsyncCallback, new LearnAsyncState(learnDelegate, callback));
+        }
+
+        internal void LearnAsyncCallback(IAsyncResult result)
+        {
+            if (!(result.AsyncState is LearnAsyncState)) return;
+
+            var state = (LearnAsyncState)result.AsyncState;
+            state.Callback(state.Delegate.EndInvoke(result));
         }
 
         #endregion

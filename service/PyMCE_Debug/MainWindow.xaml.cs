@@ -75,17 +75,14 @@ namespace PyMCE_Debug
 
         private void LocalLearn(object sender, RoutedEventArgs e)
         {
-            byte[] code;
-            var status = Local.Transceiver.Learn(out code);
-
-            if (status == LearnStatus.Success)
-            {
-                Code.Text = Encoding.ASCII.GetString(code);
-            }
-            else
-            {
-                Code.Text = "";
-            }
+            Local.Learn(delegate(LearnResult result)
+                            {
+                                if (result.Status == LearnStatus.Success)
+                                {
+                                    Dispatcher.BeginInvoke(
+                                        (Action) (() => Code.Text = Encoding.ASCII.GetString(result.Data)));
+                                }
+                            });
         }
 
         private void LocalTransmit(object sender, RoutedEventArgs e)
