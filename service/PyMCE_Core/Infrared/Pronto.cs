@@ -31,14 +31,14 @@ namespace PyMCE.Core.Infrared
     /// <summary>
     /// Philips Pronto interface class.
     /// </summary>
-    internal static class Pronto
+    public static class Pronto
     {
         #region Enumerations
 
         /// <summary>
         /// Pronto IR Code type identifier.
         /// </summary>
-        private enum CodeType
+        public enum CodeFormat
         {
             // Supported ...
             RawOscillated = 0x0000,
@@ -130,22 +130,22 @@ namespace PyMCE.Core.Infrared
             if (prontoData == null || prontoData.Length == 0)
                 throw new ArgumentNullException("prontoData");
 
-            switch ((CodeType)prontoData[0])
+            switch ((CodeFormat)prontoData[0])
             {
-                case CodeType.RawOscillated:
-                case CodeType.RawUnmodulated:
+                case CodeFormat.RawOscillated:
+                case CodeFormat.RawUnmodulated:
                     return ConvertProntoRawToIrCode(prontoData);
 
-                case CodeType.RC5:
+                case CodeFormat.RC5:
                     return ConvertProntoRC5ToIrCode(prontoData);
 
-                case CodeType.RC5X:
+                case CodeFormat.RC5X:
                     return ConvertProntoRC5XToIrCode(prontoData);
 
-                case CodeType.RC6:
+                case CodeFormat.RC6:
                     return ConvertProntoRC6ToIrCode(prontoData);
 
-                case CodeType.RC6A:
+                case CodeFormat.RC6A:
                     return ConvertProntoRC6AToIrCode(prontoData);
 
                 default:
@@ -236,7 +236,7 @@ namespace PyMCE.Core.Infrared
             if (prontoData.Length != 6)
                 return null;
 
-            if (prontoData[0] != (ushort)CodeType.RC5)
+            if (prontoData[0] != (ushort)CodeFormat.RC5)
                 return null;
 
             var prontoCarrier = prontoData[1];
@@ -318,7 +318,7 @@ namespace PyMCE.Core.Infrared
             if (prontoData.Length != 7)
                 return null;
 
-            if (prontoData[0] != (ushort)CodeType.RC5X)
+            if (prontoData[0] != (ushort)CodeFormat.RC5X)
                 return null;
 
             var prontoCarrier = prontoData[1];
@@ -413,7 +413,7 @@ namespace PyMCE.Core.Infrared
             if (prontoData.Length != 6)
                 return null;
 
-            if (prontoData[0] != (ushort)CodeType.RC6)
+            if (prontoData[0] != (ushort)CodeFormat.RC6)
                 return null;
 
             var prontoCarrier = prontoData[1];
@@ -487,7 +487,7 @@ namespace PyMCE.Core.Infrared
             if (prontoData.Length != 6)
                 return null;
 
-            if (prontoData[0] != (ushort)CodeType.RC6A)
+            if (prontoData[0] != (ushort)CodeFormat.RC6A)
                 return null;
 
             var prontoCarrier = prontoData[1];
@@ -563,11 +563,11 @@ namespace PyMCE.Core.Infrared
         /*
         public static ushort[] ConvertIrCodeToPronto(IrCode irCode)
         {
-          CodeType codeType;
+          CodeFormat codeFormat;
           Int64 value;
 
-          if (Decode(irCode, out codeType, out value))
-            return EncodePronto(codeType, value);
+          if (Decode(irCode, out codeFormat, out value))
+            return EncodePronto(codeFormat, value);
           else
             return null;
         }
@@ -580,24 +580,24 @@ namespace PyMCE.Core.Infrared
         /// <returns>Pronto data (raw format).</returns>
         public static ushort[] ConvertIrCodeToProntoRaw(IRCode irCode)
         {
-            CodeType codeType;
+            CodeFormat codeFormat;
 
             var irCodeCarrier = IRCode.CarrierFrequencyDefault;
 
             switch (irCode.Carrier)
             {
                 case IRCode.CarrierFrequencyDCMode:
-                    codeType = CodeType.RawUnmodulated;
+                    codeFormat = CodeFormat.RawUnmodulated;
                     irCodeCarrier = IRCode.CarrierFrequencyDefault;
                     break;
 
                 case IRCode.CarrierFrequencyUnknown:
-                    codeType = CodeType.RawOscillated;
+                    codeFormat = CodeFormat.RawOscillated;
                     irCodeCarrier = IRCode.CarrierFrequencyDefault;
                     break;
 
                 default:
-                    codeType = CodeType.RawOscillated;
+                    codeFormat = CodeFormat.RawOscillated;
                     irCodeCarrier = irCode.Carrier;
                     break;
             }
@@ -614,7 +614,7 @@ namespace PyMCE.Core.Infrared
 
             var burstPairs = (ushort)(prontoData.Count / 2);
 
-            prontoData.Insert(0, (ushort)codeType); // Pronto Code Type
+            prontoData.Insert(0, (ushort)codeFormat); // Pronto Code Type
             prontoData.Insert(1, prontoCarrier); // IR Frequency
             prontoData.Insert(2, burstPairs); // First Burst Pairs
             prontoData.Insert(3, 0x0000); // Repeat Burst Pairs
