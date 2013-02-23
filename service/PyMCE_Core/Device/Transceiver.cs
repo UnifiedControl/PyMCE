@@ -80,6 +80,8 @@ namespace PyMCE.Core.Device
 
     #endregion
 
+    #region Shell Classes
+
     public class LearnResult
     {
         public LearnStatus Status { get; private set; }
@@ -104,6 +106,8 @@ namespace PyMCE.Core.Device
         }
     }
 
+    #endregion
+
     public class Transceiver
     {
         #region Constants
@@ -124,11 +128,11 @@ namespace PyMCE.Core.Device
         private bool _disableMceServices = true;
         private int _learnTimeout = 10000;
 
-        private object _learnLock = new object();
-
         #endregion
 
         private Driver _driver;
+
+        private object _learnLock = new object();
 
         #endregion
 
