@@ -40,8 +40,8 @@ namespace PyMCE_Debug
 
         public MainWindow()
         {
-            Local = new LocalManager();
-            Service = new ServiceManager();
+            Local = new LocalManager(this);
+            Service = new ServiceManager(this);
 
             DataContext = this;
 
@@ -71,14 +71,21 @@ namespace PyMCE_Debug
                                 if (result.Status == LearnStatus.Success)
                                 {
                                     Dispatcher.BeginInvoke(
-                                        (Action) (() => Code.Text = result.Code.ToProntoString()));
+                                        (Action) (() =>
+                                                      {
+                                                          CodeString.Text = result.Code.ToProntoString();
+                                                          LogView.Items.Insert(0,
+                                                                               Code.FromIRCode(
+                                                                                   LogView.Items.Count + 1,
+                                                                                   result.Code));
+                                                      }));
                                 }
                             });
         }
 
         private void LocalTransmit(object sender, RoutedEventArgs e)
         {
-            var code = Encoding.ASCII.GetBytes(Code.Text);
+            var code = Encoding.ASCII.GetBytes(CodeString.Text);
 
             Local.Transceiver.Transmit("", code);
         }
@@ -109,9 +116,22 @@ namespace PyMCE_Debug
 
         #endregion
 
-        private void Code_OnTextChanged(object sender, TextChangedEventArgs e)
+        private void CodeString_OnTextChanged(object sender, TextChangedEventArgs e)
         {
             UpdateCodeInfo();
+        }
+
+        private void LogView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (e.AddedItems.Count != 1) return;
+
+            var code = (Code) e.AddedItems[0];
+            CodeString.Text = code.ProntoCode;
+        }
+
+        private void Clear_Click(object sender, RoutedEventArgs e)
+        {
+            LogView.Items.Clear();
         }
 
         #endregion
@@ -126,7 +146,7 @@ namespace PyMCE_Debug
             CodeRepeatPairs.Content = "";
 
             // Update with new data
-            var prontoWords = Code.Text.Split(' ');
+            var prontoWords = CodeString.Text.Split(' ');
 
             for (var wi = 0; wi < prontoWords.Length; wi++)
             {
@@ -160,5 +180,7 @@ namespace PyMCE_Debug
                 }
             }
         }
+
+        
     }
 }

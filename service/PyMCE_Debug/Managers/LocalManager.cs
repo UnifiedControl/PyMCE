@@ -68,18 +68,25 @@ namespace PyMCE_Debug.Managers
 
         private string _status = "Idle";
         private string _receivingStatus = "";
+        private readonly MainWindow _mainWindow;
         private Transceiver _transceiver;
 
-        public LocalManager()
+        public LocalManager(MainWindow mainWindow)
         {
+            _mainWindow = mainWindow;
+
             _transceiver = new Transceiver();
             _transceiver.CodeReceived += _transceiver_CodeReceived;
             _transceiver.StateChanged += _transceiver_StateChanged;
         }
 
+        #region Event Handlers
+
         private void _transceiver_CodeReceived(object sender, CodeReceivedEventArgs e)
         {
-            throw new NotImplementedException();
+            _mainWindow.Dispatcher.BeginInvoke((Action) (() =>
+                                                         _mainWindow.LogView.Items.Insert(0, 
+                                                             Code.FromIRCode(_mainWindow.LogView.Items.Count + 1, e.Code))));
         }
 
         private void _transceiver_StateChanged(object sender, StateChangedEventArgs e)
@@ -89,6 +96,10 @@ namespace PyMCE_Debug.Managers
 
             FirePropertyChanged("ControlsEnabled");
         }
+
+        #endregion
+
+        #region Public Methods
 
         public void Start()
         {
@@ -105,11 +116,17 @@ namespace PyMCE_Debug.Managers
             _transceiver.LearnAsync(callback);
         }
 
+        #endregion
+
+        #region INotifyPropertyChanged
+
         public event PropertyChangedEventHandler PropertyChanged;
         private void FirePropertyChanged(string propertyName)
         {
             if (PropertyChanged != null)
                 PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
         }
+
+        #endregion
     }
 }

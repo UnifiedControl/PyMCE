@@ -43,7 +43,7 @@ namespace PyMCE_Debug.Managers
             get { return false; }
         }
 
-        public ServiceManager()
+        public ServiceManager(MainWindow mainWindow)
         {
 
         }
