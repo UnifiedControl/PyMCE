@@ -19,6 +19,12 @@ namespace PyMCE_Debug.Managers
             }
         }
 
+        public Transceiver Transceiver
+        {
+            get { return _transceiver; }
+            set { _transceiver = value; }
+        }
+
         private string _status = "Idle";
         private Transceiver _transceiver;
 
@@ -30,23 +36,13 @@ namespace PyMCE_Debug.Managers
         public void Start()
         {
             _transceiver.Start();
-            Status = "Starting";
+            Status = "Running";
         }
 
         public void Stop()
         {
             _transceiver.Stop();
-            Status = "Stopping";
-        }
-
-        public LearnStatus Learn(out byte[] data)
-        {
-            return _transceiver.Learn(out data);
-        }
-
-        public bool Transmit(string port, byte[] data)
-        {
-            return _transceiver.Transmit(port, data);
+            Status = "Idle";
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

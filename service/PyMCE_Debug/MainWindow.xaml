@@ -9,6 +9,8 @@
         
         <Grid.RowDefinitions>
             <RowDefinition Height="54"/>
+            <RowDefinition Height="150"/>
+            <RowDefinition Height="50"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
@@ -26,9 +28,9 @@
 
                     <Button Content="Start" Width="45" Margin="5,0" Grid.Column="0" Click="ServiceStart"/>
                     <Button Content="Stop" Width="45" Margin="5,0" Grid.Column="1" Click="ServiceStop"/>
-                    <Label Content="{Binding Path=Service.Status}" Margin="5,0" Grid.Column="2"/>
-                    <Button Content="Learn" Width="45" Margin="5,0" Grid.Column="3"/>
-                    <Button Content="Transmit" Width="65" Margin="5,0" Grid.Column="4"/>
+                    <Label Content="{Binding Path=Service.Status}" Margin="5,0" Grid.Column="2" VerticalContentAlignment="Center"/>
+                    <Button Content="Learn" Width="45" Margin="5,0" Grid.Column="3" Click="ServiceLearn"/>
+                    <Button Content="Transmit" Width="65" Margin="5,0" Grid.Column="4" Click="ServiceTransmit"/>
                 </Grid>
             </TabItem>
             <TabItem Header="Local" Selector.IsSelected="True">
@@ -44,14 +46,33 @@
 
                     <Button Content="Start" Width="45" Margin="5,0" Grid.Column="0" Click="LocalStart"/>
                     <Button Content="Stop" Width="45" Margin="5,0" Grid.Column="1" Click="LocalStop"/>
-                    <Label Content="{Binding Path=Local.Status}" Margin="5,0" Grid.Column="2"/>
-                    <Button Content="Learn" Width="45" Margin="5,0" Grid.Column="3"/>
-                    <Button Content="Transmit" Width="65" Margin="5,0,6,0" Grid.Column="4"/>
+                    <Label Content="{Binding Path=Local.Status}" Margin="5,0" Grid.Column="2" VerticalContentAlignment="Center"/>
+                    <Button Content="Learn" Width="45" Margin="5,0" Grid.Column="3" Click="LocalLearn"/>
+                    <Button Content="Transmit" Width="65" Margin="5,0,6,0" Grid.Column="4" Click="LocalTransmit"/>
                 </Grid>
             </TabItem>
         </TabControl>
+        
+        <TextBox x:Name="Code" Grid.Column="0" Grid.Row="1" Margin="10,10,10,0" TextWrapping="WrapWithOverflow" TextChanged="Code_OnTextChanged" />
 
-        <ListView Grid.Column="0" Grid.Row="1" Margin="10">
+        <StackPanel Grid.Column="0" Grid.Row="2" Margin="10,0,10,0">
+            <StackPanel Orientation="Horizontal">
+                <Label Content="Format" FontWeight="Bold" Width="70"/>
+                <Label x:Name="CodeFormat" Content="0000 - Learned (unmodulated)" Width="180" Margin="0,0,10,0"/>
+
+                <Label Content="Carrier Frequency" FontWeight="Bold" Width="110"/>
+                <Label x:Name="CodeCarrier" Content="36,000 Hz" Width="70" Margin="0,0,10,0"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal">
+                <Label Content="Once Pairs" FontWeight="Bold" Width="70"/>
+                <Label x:Name="CodeOncePairs" Content="21 (0x15)" Width="180" Margin="0,0,10,0"/>
+
+                <Label Content="Repeat Pairs" FontWeight="Bold" Width="110"/>
+                <Label x:Name="CodeRepeatPairs" Content="0 (0x0)" Width="70" Margin="0,0,10,0"/>
+            </StackPanel>
+        </StackPanel>
+
+        <ListView x:Name="LogView" Grid.Column="0" Grid.Row="3" Margin="10,10,10,10">
             <ListView.View>
                 <GridView>
                     <GridViewColumn/>
