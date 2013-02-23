@@ -32,7 +32,7 @@ namespace PyMCE.Core.Infrared
     /// <summary>
     /// Encapsulates an MCE compatible IR Code.
     /// </summary>
-    internal class IRCode
+    public class IRCode
     {
         #region Constants
 
@@ -124,6 +124,7 @@ namespace PyMCE.Core.Infrared
             }
 
             TimingData = newData.ToArray();
+
             return true;
         }
 
@@ -169,10 +170,10 @@ namespace PyMCE.Core.Infrared
         }
 
         /// <summary>
-        /// Creates a byte array representation of this IR Code.
+        /// Creates a pronto string representation of this IR Code.
         /// </summary>
-        /// <returns>Byte array representation (internally it is in Pronto format).</returns>
-        public byte[] ToByteArray()
+        /// <returns>Pronto string</returns>
+        public string ToProntoString()
         {
             var output = new StringBuilder();
 
@@ -185,7 +186,16 @@ namespace PyMCE.Core.Infrared
                     output.Append(' ');
             }
 
-            return Encoding.ASCII.GetBytes(output.ToString());
+            return output.ToString();
+        }
+
+        /// <summary>
+        /// Creates a pronto byte array representation of this IR Code.
+        /// </summary>
+        /// <returns>Pronto Byte array</returns>
+        public byte[] ToProntoByteArray()
+        {
+            return Encoding.ASCII.GetBytes(ToProntoString());
         }
 
         #endregion Methods
@@ -228,14 +238,12 @@ namespace PyMCE.Core.Infrared
         }
 
         /// <summary>
-        /// Creates an IrCode object from Pronto format file bytes.
+        /// Creates an IrCode object from Pronto string.
         /// </summary>
-        /// <param name="data">IR file bytes.</param>
-        /// <returns>New IrCode object.</returns>
-        private static IRCode FromProntoData(byte[] data)
+        /// <param name="code">Pronto string</param>
+        /// <returns>New IrCode object</returns>
+        private static IRCode FromProntoString(string code)
         {
-            var code = Encoding.ASCII.GetString(data);
-
             var stringData = code.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 
             var prontoData = new ushort[stringData.Length];
@@ -251,13 +259,33 @@ namespace PyMCE.Core.Infrared
         }
 
         /// <summary>
+        /// Creates an IrCode object from Pronto byte array.
+        /// </summary>
+        /// <param name="data">Pronto byte array</param>
+        /// <returns>New IrCode object</returns>
+        private static IRCode FromProntoByteArray(byte[] data)
+        {
+            return FromProntoString(Encoding.ASCII.GetString(data));
+        }
+
+        /// <summary>
+        /// Create a new IrCode object from string.
+        /// </summary>
+        /// <param name="code">string to create from</param>
+        /// <returns>New IrCode object</returns>
+        public static IRCode FromString(string code)
+        {
+            return code[4] == ' ' ? FromProntoString(code) : FromOldData(Encoding.ASCII.GetBytes(code));
+        }
+
+        /// <summary>
         /// Create a new IrCode object from byte array data.
         /// </summary>
         /// <param name="data">Byte array to create from.</param>
         /// <returns>New IrCode object.</returns>
         public static IRCode FromByteArray(byte[] data)
         {
-            return data[4] == ' ' ? FromProntoData(data) : FromOldData(data);
+            return data[4] == ' ' ? FromProntoByteArray(data) : FromOldData(data);
         }
 
         #endregion Static Methods

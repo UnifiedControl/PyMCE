@@ -1530,8 +1530,8 @@ namespace PyMCE.Core.Device
 
                         if (_readThreadMode == ReadThreadMode.Learning)
                             _learningCode.AddTimingData(timingData);
-                        //else
-                        //  IrDecoder.DecodeIR(timingData, _remoteCallback, _keyboardCallback, _mouseCallback);
+                        else
+                            FireCodeReceived(new CodeReceivedEventArgs(new IRCode(timingData)));
                     }
 
                     // Determine carrier frequency when learning ...

@@ -80,7 +80,9 @@
         <ListView x:Name="LogView" Grid.Column="0" Grid.Row="3" Margin="10,10,10,10">
             <ListView.View>
                 <GridView>
-                    <GridViewColumn/>
+                    <GridViewColumn Header="#" Width="30"/>
+                    <GridViewColumn Header="Type" Width="100"/>
+                    <GridViewColumn Header="Pronto Code" Width="500"/>
                 </GridView>
             </ListView.View>
         </ListView>

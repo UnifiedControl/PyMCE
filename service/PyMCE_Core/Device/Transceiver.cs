@@ -85,12 +85,12 @@ namespace PyMCE.Core.Device
     public class LearnResult
     {
         public LearnStatus Status { get; private set; }
-        public byte[] Data { get; private set; }
+        public IRCode Code { get; private set; }
 
-        internal LearnResult(LearnStatus status, byte[] data)
+        internal LearnResult(LearnStatus status, IRCode code)
         {
             Status = status;
-            Data = data;
+            Code = code;
         }
     }
 
@@ -148,9 +148,8 @@ namespace PyMCE.Core.Device
 
         #region Learn
 
-        public LearnStatus Learn(out byte[] data)
+        public LearnStatus Learn(out IRCode code)
         {
-            IRCode code;
             LearnStatus status;
 
             lock (_learnLock)
@@ -158,16 +157,15 @@ namespace PyMCE.Core.Device
                 status = _driver.Learn(_learnTimeout, out code);
             }
 
-            data = code != null ? code.ToByteArray() : null;
             return status;
         }
 
         public LearnResult Learn()
         {
-            byte[] data;
-            var status = Learn(out data);
+            IRCode code;
+            var status = Learn(out code);
 
-            return new LearnResult(status, data);
+            return new LearnResult(status, code);
         }
 
         public void LearnAsync(LearnCompletedDelegate callback)

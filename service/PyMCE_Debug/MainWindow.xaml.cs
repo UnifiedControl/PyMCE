@@ -29,6 +29,7 @@ using PyMCE_Debug.Managers;
 using System.Text;
 using System.Collections.Generic;
 using System;
+using PyMCE.Core.Infrared;
 
 namespace PyMCE_Debug
 {
@@ -36,16 +37,6 @@ namespace PyMCE_Debug
     {
         public LocalManager Local { get; set; }
         public ServiceManager Service { get; set; }
-
-        private Dictionary<string, string> _prontoFormats = new Dictionary<string, string>()
-                                                                {
-                                                                    {"0000", "Learned (modulated)"},
-                                                                    {"0100", "Learned (unmodulated)"},
-                                                                    {"5000", "RC5"},
-                                                                    {"5001", "RC5x"},
-                                                                    {"6000", "RC6"},
-                                                                    {"6001", "RC5a"},
-                                                                };
 
         public MainWindow()
         {
@@ -80,7 +71,7 @@ namespace PyMCE_Debug
                                 if (result.Status == LearnStatus.Success)
                                 {
                                     Dispatcher.BeginInvoke(
-                                        (Action) (() => Code.Text = Encoding.ASCII.GetString(result.Data)));
+                                        (Action) (() => Code.Text = result.Code.ToProntoString()));
                                 }
                             });
         }
@@ -146,8 +137,8 @@ namespace PyMCE_Debug
                     switch (wi)
                     {
                         case 0: // Format
-                            if(_prontoFormats.ContainsKey(word))
-                                CodeFormat.Content = word + " - " + _prontoFormats[word];
+                            var format = IRFormat.FromProntoWord(word);
+                            CodeFormat.Content = format.Format + " (" + format.Word + ")";
                             break;
 
                         case 1: // Carrier Frequency

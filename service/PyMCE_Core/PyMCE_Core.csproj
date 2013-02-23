@@ -66,6 +66,7 @@
     <Compile Include="Device\DriverXP.cs" />
     <Compile Include="Device\Transceiver.cs" />
     <Compile Include="Infrared\IRCode.cs" />
+    <Compile Include="Infrared\IRFormat.cs" />
     <Compile Include="Infrared\Pronto.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Utils\Windows.cs" />

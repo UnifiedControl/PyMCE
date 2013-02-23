@@ -32,11 +32,15 @@ using System.Runtime.InteropServices;
 
 namespace PyMCE.Core.Device
 {
+    #region Shell Classes
+
     public class CodeReceivedEventArgs : EventArgs
     {
-        public CodeReceivedEventArgs()
+        public IRCode Code { get; private set; }
+
+        public CodeReceivedEventArgs(IRCode code)
         {
-            
+            Code = code;
         }
     }
 
@@ -73,6 +77,8 @@ namespace PyMCE.Core.Device
             ReceivingState = receivingState;
         }
     }
+
+    #endregion
 
     #region Delegates
 
@@ -353,16 +359,14 @@ namespace PyMCE.Core.Device
 
         #region Callbacks
 
-        // Callbacks to the Transceiver object.
         internal CodeReceivedDelegate CodeReceivedCallback { get; set; }
-        internal StateChangedDelegate StateChangedCallback { get; set; }
-        
         protected void FireCodeReceived(CodeReceivedEventArgs e)
         {
             if (CodeReceivedCallback != null)
                 CodeReceivedCallback(this, e);
         }
 
+        internal StateChangedDelegate StateChangedCallback { get; set; }
         protected void FireStateChanged(StateChangedEventArgs e)
         {
             if (StateChangedCallback != null &&
