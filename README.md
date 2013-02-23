@@ -4,13 +4,14 @@ PyMCE
 
 Python MCE IR Receiver Library
 
-**Note:** We have not started on the python package yet, Work will be started when the Windows PyMCE service
-is complete.
-
 **Note:** The PyMCE_Core C# library (which is utilized in the PyMCE Windows Service)  was built off
 the "Microsoft MCE Transceiver" plugin source code from the IR-Server-Suite project at
 http://github.com/MediaPortal/IR-Server-Suite
 
+
+PyMCE/python
+------------------
+**Work on the python package will start after the windows PyMCE service is complete.**
 
 PyMCE/service
 ------------------
