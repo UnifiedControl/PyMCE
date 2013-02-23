@@ -13,6 +13,16 @@ namespace PyMCE_Debug.Managers
             get { return "Idle"; }
         }
 
+        public string ReceivingStatus
+        {
+            get { return ""; }
+        }
+
+        public bool ControlsEnabled
+        {
+            get { return false; }
+        }
+
         public ServiceManager()
         {
 

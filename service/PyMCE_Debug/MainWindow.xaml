@@ -30,9 +30,9 @@
                     <Button Content="Start" Width="45" Margin="5,0" Grid.Column="0" Click="ServiceStart"/>
                     <Button Content="Stop" Width="45" Margin="5,0" Grid.Column="1" Click="ServiceStop"/>
                     <Label Content="{Binding Path=Service.Status}" Margin="5,0" Grid.Column="2" VerticalContentAlignment="Center"/>
-                    <Label Content="{Binding Path=Local.ReceivingStatus}" Margin="5,0" Grid.Column="3" VerticalContentAlignment="Center" HorizontalContentAlignment="Right"/>
-                    <Button Content="Learn" Width="45" Margin="5,0" Grid.Column="4" Click="ServiceLearn" IsEnabled="{Binding Path=Service.IsRunning}"/>
-                    <Button Content="Transmit" Width="65" Margin="5,0" Grid.Column="5" Click="ServiceTransmit" IsEnabled="{Binding Path=Service.IsRunning}"/>
+                    <Label Content="{Binding Path=Service.ReceivingStatus}" Margin="5,0" Grid.Column="3" VerticalContentAlignment="Center" HorizontalContentAlignment="Right"/>
+                    <Button Content="Learn" Width="45" Margin="5,0" Grid.Column="4" Click="ServiceLearn" IsEnabled="{Binding Path=Service.ControlsEnabled}"/>
+                    <Button Content="Transmit" Width="65" Margin="5,0" Grid.Column="5" Click="ServiceTransmit" IsEnabled="{Binding Path=Service.ControlsEnabled}"/>
                 </Grid>
             </TabItem>
             <TabItem Header="Local" Selector.IsSelected="True">
