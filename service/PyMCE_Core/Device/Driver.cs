@@ -32,6 +32,55 @@ using System.Runtime.InteropServices;
 
 namespace PyMCE.Core.Device
 {
+    public class CodeReceivedEventArgs : EventArgs
+    {
+        public CodeReceivedEventArgs()
+        {
+            
+        }
+    }
+
+    public enum RunningState
+    {
+        Starting,
+        Started,
+
+        Stopping,
+        Stopped
+    }
+
+    public enum ReceivingState
+    {
+        None,
+        Receiving,
+        Learning
+    }
+
+    public class StateChangedEventArgs : EventArgs
+    {
+        public RunningState RunningState { get; private set; }
+        public ReceivingState ReceivingState { get; private set; }
+
+        public StateChangedEventArgs(RunningState runningState)
+        {
+            RunningState = runningState;
+            ReceivingState = ReceivingState.None;
+        }
+
+        public StateChangedEventArgs(RunningState runningState, ReceivingState receivingState)
+        {
+            RunningState = runningState;
+            ReceivingState = receivingState;
+        }
+    }
+
+    #region Delegates
+
+    public delegate void CodeReceivedDelegate(object sender, CodeReceivedEventArgs e);
+    public delegate void StateChangedDelegate(object sender, StateChangedEventArgs e);
+
+    #endregion
+
     /// <summary>
     /// Base class for the different MCE device driver access classes.
     /// </summary>
@@ -299,6 +348,39 @@ namespace PyMCE.Core.Device
         }
 
         #endregion Constructors
+
+        #region Properties
+
+        #region Callbacks
+
+        // Callbacks to the Transceiver object.
+        internal CodeReceivedDelegate CodeReceivedCallback { get; set; }
+        internal StateChangedDelegate StateChangedCallback { get; set; }
+        
+        protected void FireCodeReceived(CodeReceivedEventArgs e)
+        {
+            if (CodeReceivedCallback != null)
+                CodeReceivedCallback(this, e);
+        }
+
+        protected void FireStateChanged(StateChangedEventArgs e)
+        {
+            if (StateChangedCallback != null &&
+                (e.RunningState != CurrentRunningState ||
+                 e.ReceivingState != CurrentReceivingState))
+            {
+                StateChangedCallback(this, e);
+                CurrentRunningState = e.RunningState;
+                CurrentReceivingState = e.ReceivingState;
+            }
+        }
+
+        #endregion
+
+        public RunningState CurrentRunningState { get; protected set; }
+        public ReceivingState CurrentReceivingState { get; protected set; }
+
+        #endregion
 
         #region Abstract Methods
 

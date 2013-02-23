@@ -1129,6 +1129,8 @@ namespace PyMCE.Core.Device
                 _isSystem64Bit = Utils.Windows.IsSystem64Bit();
                 DebugWriteLine("Operating system arch is {0}", _isSystem64Bit ? "x64" : "x86");
 
+                FireStateChanged(new StateChangedEventArgs(RunningState.Starting));
+
                 OpenDevice();
                 InitializeDevice();
 
@@ -1148,6 +1150,8 @@ namespace PyMCE.Core.Device
         {
             DebugWriteLine("Stop()");
 
+            FireStateChanged(new StateChangedEventArgs(RunningState.Stopping));
+
             try
             {
                 StopReadThread();
@@ -1161,6 +1165,7 @@ namespace PyMCE.Core.Device
             finally
             {
                 DebugClose();
+                FireStateChanged(new StateChangedEventArgs(RunningState.Stopped));
             }
         }
 
@@ -1343,6 +1348,8 @@ namespace PyMCE.Core.Device
                                   IsBackground = true
                               };
             _readThread.Start();
+
+            FireStateChanged(new StateChangedEventArgs(RunningState.Started));
         }
 
         /// <summary>
@@ -1488,6 +1495,16 @@ namespace PyMCE.Core.Device
                                      PacketTimeout);
                         _readThreadMode = _readThreadModeNext;
                         _deviceReceiveStarted = true;
+
+                        switch (_readThreadMode)
+                        {
+                            case ReadThreadMode.Receiving:
+                                FireStateChanged(new StateChangedEventArgs(RunningState.Started, ReceivingState.Receiving));
+                                break;
+                            case ReadThreadMode.Learning:
+                                FireStateChanged(new StateChangedEventArgs(RunningState.Started, ReceivingState.Learning));
+                                break;
+                        }
                     }
 
                     int bytesRead;
@@ -1540,6 +1557,7 @@ namespace PyMCE.Core.Device
                         }
                     }
                 }
+                FireStateChanged(new StateChangedEventArgs(RunningState.Stopping));
             }
             catch (Exception ex)
             {
@@ -1565,6 +1583,7 @@ namespace PyMCE.Core.Device
             }
 
             DebugWriteLine("Read Thread Ended");
+            FireStateChanged(new StateChangedEventArgs(RunningState.Stopped));
         }
 
         #endregion Implementation

@@ -21,6 +21,7 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
@@ -29,8 +30,9 @@
                     <Button Content="Start" Width="45" Margin="5,0" Grid.Column="0" Click="ServiceStart"/>
                     <Button Content="Stop" Width="45" Margin="5,0" Grid.Column="1" Click="ServiceStop"/>
                     <Label Content="{Binding Path=Service.Status}" Margin="5,0" Grid.Column="2" VerticalContentAlignment="Center"/>
-                    <Button Content="Learn" Width="45" Margin="5,0" Grid.Column="3" Click="ServiceLearn"/>
-                    <Button Content="Transmit" Width="65" Margin="5,0" Grid.Column="4" Click="ServiceTransmit"/>
+                    <Label Content="{Binding Path=Local.ReceivingStatus}" Margin="5,0" Grid.Column="3" VerticalContentAlignment="Center" HorizontalContentAlignment="Right"/>
+                    <Button Content="Learn" Width="45" Margin="5,0" Grid.Column="4" Click="ServiceLearn" IsEnabled="{Binding Path=Service.IsRunning}"/>
+                    <Button Content="Transmit" Width="65" Margin="5,0" Grid.Column="5" Click="ServiceTransmit" IsEnabled="{Binding Path=Service.IsRunning}"/>
                 </Grid>
             </TabItem>
             <TabItem Header="Local" Selector.IsSelected="True">
@@ -38,6 +40,7 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
@@ -47,8 +50,9 @@
                     <Button Content="Start" Width="45" Margin="5,0" Grid.Column="0" Click="LocalStart"/>
                     <Button Content="Stop" Width="45" Margin="5,0" Grid.Column="1" Click="LocalStop"/>
                     <Label Content="{Binding Path=Local.Status}" Margin="5,0" Grid.Column="2" VerticalContentAlignment="Center"/>
-                    <Button Content="Learn" Width="45" Margin="5,0" Grid.Column="3" Click="LocalLearn"/>
-                    <Button Content="Transmit" Width="65" Margin="5,0,6,0" Grid.Column="4" Click="LocalTransmit"/>
+                    <Label Content="{Binding Path=Local.ReceivingStatus}" Margin="5,0" Grid.Column="3" VerticalContentAlignment="Center" HorizontalContentAlignment="Right"/>
+                    <Button Content="Learn" Width="45" Margin="5,0" Grid.Column="4" Click="LocalLearn" IsEnabled="{Binding Path=Local.IsRunning}"/>
+                    <Button Content="Transmit" Width="65" Margin="5,0,6,0" Grid.Column="5" Click="LocalTransmit" IsEnabled="{Binding Path=Local.IsRunning}"/>
                 </Grid>
             </TabItem>
         </TabControl>
@@ -63,6 +67,7 @@
                 <Label Content="Carrier Frequency" FontWeight="Bold" Width="110"/>
                 <Label x:Name="CodeCarrier" Content="36,000 Hz" Width="70" Margin="0,0,10,0"/>
             </StackPanel>
+            
             <StackPanel Orientation="Horizontal">
                 <Label Content="Once Pairs" FontWeight="Bold" Width="70"/>
                 <Label x:Name="CodeOncePairs" Content="21 (0x15)" Width="180" Margin="0,0,10,0"/>

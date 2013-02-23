@@ -99,6 +99,14 @@ namespace PyMCE.Core.Device
 
         #endregion
 
+        #region Events
+
+        public event CodeReceivedDelegate CodeReceived;
+
+        public event StateChangedDelegate StateChanged;
+
+        #endregion
+
         #region Public Methods
 
         #region Learn
@@ -186,9 +194,10 @@ namespace PyMCE.Core.Device
                 throw new InvalidOperationException("Device not found");
             }
 
-            newDriver.Start();
-
             _driver = newDriver;
+            _driver.StateChangedCallback = Driver_StateChangedCallback;
+            _driver.CodeReceivedCallback = Driver_CodeReceivedCallback;
+            _driver.Start();
         }
 
         public void Suspend()
@@ -218,6 +227,42 @@ namespace PyMCE.Core.Device
         }
 
         #endregion
+
+        #endregion
+
+        #region Properties
+
+        public RunningState CurrentRunningState
+        {
+            get
+            {
+                return _driver != null ? _driver.CurrentRunningState : RunningState.Stopped;
+            }
+        }
+
+        public ReceivingState CurrentReceivingState
+        {
+            get
+            {
+                return _driver != null ? _driver.CurrentReceivingState : ReceivingState.None;
+            }
+        }
+
+        #endregion
+
+        #region Driver Callbacks
+
+        private void Driver_CodeReceivedCallback(object sender, CodeReceivedEventArgs codeReceivedEventArgs)
+        {
+            if (CodeReceived != null)
+                CodeReceived(sender, codeReceivedEventArgs);
+        }
+
+        private void Driver_StateChangedCallback(object sender, StateChangedEventArgs stateChangedEventArgs)
+        {
+            if (StateChanged != null)
+                StateChanged(sender, stateChangedEventArgs);
+        }
 
         #endregion
 
