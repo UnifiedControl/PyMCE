@@ -750,6 +750,7 @@ namespace PyMCE.Core.Device
                 {
                     int lastError;
                     int bytesRead;
+
                     var readDevice = ReadFile(_readHandle, deviceBufferPtr, DeviceBufferSize, out bytesRead,
                                                overlapped.Overlapped);
                     lastError = Marshal.GetLastWin32Error();
