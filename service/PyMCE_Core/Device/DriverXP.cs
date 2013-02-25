@@ -513,6 +513,16 @@ namespace PyMCE.Core.Device
         /// <param name="port">The input port.</param>
         private void SetInputPort(InputPort port)
         {
+            switch (port)
+            {
+                case InputPort.Receive:
+                    FireStateChanged(new StateChangedEventArgs(RunningState.Started, ReceivingState.Receiving));
+                    break;
+                case InputPort.Learning:
+                    FireStateChanged(new StateChangedEventArgs(RunningState.Started, ReceivingState.Learning));
+                    break;
+            }
+
             var inputPortPacket = new byte[SetInputPortPacket.Length];
             SetInputPortPacket.CopyTo(inputPortPacket, 0);
 
@@ -764,17 +774,6 @@ namespace PyMCE.Core.Device
 
                     packetBytes = new byte[bytesRead];
                     Marshal.Copy(deviceBufferPtr, packetBytes, 0, bytesRead);
-
-                    // Fire Learning/Receiving Started events
-                    switch (_readThreadMode)
-                    {
-                        case ReadThreadMode.Receiving:
-                            FireStateChanged(new StateChangedEventArgs(RunningState.Started, ReceivingState.Receiving));
-                            break;
-                        case ReadThreadMode.Learning:
-                            FireStateChanged(new StateChangedEventArgs(RunningState.Started, ReceivingState.Learning));
-                            break;
-                    }
 
                     DebugWrite("Received bytes ({0}): ", bytesRead);
                     DebugDump(packetBytes);
