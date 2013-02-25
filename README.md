@@ -41,7 +41,7 @@ Core library for connecting to the MCE Receiver
 WPF application for debugging local or service based PyMCE clients
 
 ###PyMCE_Service    
-Service to easily provide MCE Receiver communication with other applications
+Service to easily provide MCE Receiver communication to other applications
 
 ###PyMCE_Tests    
 Unit tests for the PyMCE Core library
