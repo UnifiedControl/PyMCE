@@ -27,7 +27,7 @@ Core library for connecting to the MCE Receiver
 ####Compatibility
 **Windows 8** Works
 
-**Windows 7** Should Work / Untested
+**Windows 7** Should work / Untested
 
 **Windows Vista** Should work / Untested
 
