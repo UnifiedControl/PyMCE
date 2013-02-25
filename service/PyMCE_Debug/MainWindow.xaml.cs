@@ -30,6 +30,7 @@ using System.Text;
 using System.Collections.Generic;
 using System;
 using PyMCE.Core.Infrared;
+using System.Diagnostics;
 
 namespace PyMCE_Debug
 {
@@ -79,6 +80,10 @@ namespace PyMCE_Debug
                                                                                    LogView.Items.Count + 1,
                                                                                    result.Code));
                                                       }));
+                                }
+                                else
+                                {
+                                    Debug.WriteLine("Learning Failed");
                                 }
                             });
         }

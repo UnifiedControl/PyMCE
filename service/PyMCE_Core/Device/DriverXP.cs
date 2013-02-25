@@ -731,16 +731,6 @@ namespace PyMCE.Core.Device
                                                overlapped.Overlapped);
                     lastError = Marshal.GetLastWin32Error();
 
-                    switch (_readThreadMode)
-                    {
-                        case ReadThreadMode.Receiving:
-                            FireStateChanged(new StateChangedEventArgs(RunningState.Started, ReceivingState.Receiving));
-                            break;
-                        case ReadThreadMode.Learning:
-                            FireStateChanged(new StateChangedEventArgs(RunningState.Started, ReceivingState.Learning));
-                            break;
-                    }
-
                     if (!readDevice)
                     {
                         if (lastError != ErrorSuccess && lastError != ErrorIoPending)
@@ -774,6 +764,17 @@ namespace PyMCE.Core.Device
 
                     packetBytes = new byte[bytesRead];
                     Marshal.Copy(deviceBufferPtr, packetBytes, 0, bytesRead);
+
+                    // Fire Learning/Receiving Started events
+                    switch (_readThreadMode)
+                    {
+                        case ReadThreadMode.Receiving:
+                            FireStateChanged(new StateChangedEventArgs(RunningState.Started, ReceivingState.Receiving));
+                            break;
+                        case ReadThreadMode.Learning:
+                            FireStateChanged(new StateChangedEventArgs(RunningState.Started, ReceivingState.Learning));
+                            break;
+                    }
 
                     DebugWrite("Received bytes ({0}): ", bytesRead);
                     DebugDump(packetBytes);
