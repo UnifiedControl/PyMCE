@@ -373,9 +373,9 @@ namespace PyMCE.Core.Device
                 (e.RunningState != CurrentRunningState ||
                  e.ReceivingState != CurrentReceivingState))
             {
-                StateChangedCallback(this, e);
                 CurrentRunningState = e.RunningState;
                 CurrentReceivingState = e.ReceivingState;
+                StateChangedCallback(this, e);
             }
         }
 
