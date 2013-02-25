@@ -105,7 +105,7 @@ namespace PyMCE.Core.Infrared
         /// <returns><c>true</c> if successful, otherwise <c>false</c>.</returns>
         public bool FinalizeData()
         {
-            if (TimingData.Length == 0)
+            if (TimingData == null || TimingData.Length == 0)
                 return false;
 
             // Find long spaces and trim the IR code ...
