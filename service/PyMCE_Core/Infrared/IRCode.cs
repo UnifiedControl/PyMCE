@@ -106,7 +106,10 @@ namespace PyMCE.Core.Infrared
         public bool FinalizeData()
         {
             if (TimingData == null || TimingData.Length == 0)
+            {
+                TimingData = new int[] {};
                 return false;
+            }
 
             // Find long spaces and trim the IR code ...
             var newData = new List<int>();
