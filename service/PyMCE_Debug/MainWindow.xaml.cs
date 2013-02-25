@@ -83,7 +83,7 @@ namespace PyMCE_Debug
                                 }
                                 else
                                 {
-                                    Debug.WriteLine("Learning Failed");
+                                    Debug.WriteLine("Learning Failed: " + result.Status);
                                 }
                             });
         }
