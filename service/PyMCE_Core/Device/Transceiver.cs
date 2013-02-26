@@ -28,6 +28,7 @@ using System.Linq;
 using System.ServiceProcess;
 using PyMCE.Core.Infrared;
 using Microsoft.Win32;
+using System.Collections.Generic;
 
 namespace PyMCE.Core.Device
 {
@@ -71,6 +72,17 @@ namespace PyMCE.Core.Device
         Timeout,
     }
 
+    [Flags]
+    public enum InterferenceLevel
+    {
+        Service = 1,
+        Process = 2,
+
+        Learn = 4,
+        Transmit = 8,
+        Receive = 16
+    }
+
     #endregion
 
     #region Delegates
@@ -106,6 +118,17 @@ namespace PyMCE.Core.Device
         }
     }
 
+    public class InterferenceException : Exception
+    {
+        public Dictionary<string, InterferenceLevel> Interference { get; private set; } 
+
+        public InterferenceException(Dictionary<string, InterferenceLevel> interference, string message)
+            : base(message)
+        {
+            Interference = interference;
+        }
+    }
+
     #endregion
 
     public class Transceiver
@@ -118,6 +141,15 @@ namespace PyMCE.Core.Device
 
         private static readonly Guid MicrosoftGuid = new Guid(0x7951772d, 0xcd50, 0x49b7, 0xb1, 0x03, 0x2b, 0xaa, 0xc4, 0x94, 0xfc, 0x57);
         private static readonly Guid ReplacementGuid = new Guid(0x00873fdf, 0x61a8, 0x11d1, 0xaa, 0x5e, 0x00, 0xc0, 0x4f, 0xb1, 0x72, 0x8b);
+
+        private static readonly Dictionary<string, InterferenceLevel> Interference
+            = new Dictionary<string, InterferenceLevel>
+                  {
+                      {
+                          "AlternateMceIrService",
+                          InterferenceLevel.Service | InterferenceLevel.Learn
+                      }
+                  };
 
         #endregion Constants
 
@@ -216,7 +248,7 @@ namespace PyMCE.Core.Device
 
         #region Control Methods
 
-        public void Start()
+        public void Start(InterferenceLevel[] ignore = null)
         {
             Trace.WriteLine("Start MicrosoftMceTransceiver");
 
@@ -225,6 +257,35 @@ namespace PyMCE.Core.Device
 
             if (_disableMceServices)
                 DisableMceServices();
+
+            var interference = InterferenceCheck();
+            var interferenceError = false;
+            var interferenceErrorMessage = "The following programs/services have been found to cause interference and should be closed: ";
+
+            foreach (var item in interference)
+            {
+                var itemName = item.Key;
+                var itemError = true;
+                if (ignore != null)
+                {
+                    foreach (var ignoreLevel in ignore)
+                    {
+                        if ((item.Value & ignoreLevel) == ignoreLevel)
+                        {
+                            itemError = false;
+                            itemName = "";
+                        }
+                    }
+                }
+                interferenceErrorMessage += itemName + ", ";
+                if (!interferenceError) interferenceError = itemError;
+            }
+
+            if (interferenceError)
+            {
+                throw new InterferenceException(interference,
+                    interferenceErrorMessage.Substring(0, interferenceErrorMessage.Length - 2));
+            }
 
             Guid deviceGuid;
             string devicePath;
@@ -287,6 +348,50 @@ namespace PyMCE.Core.Device
         }
 
         #endregion
+
+        /// <summary>
+        /// Checks that there are no programs or services running that are known
+        /// to interfere with the transceiver input/output.
+        /// </summary>
+        /// <returns>Dictionary detailing programs/services that could interfere and their "Interference Level"</returns>
+        public static Dictionary<string, InterferenceLevel> InterferenceCheck()
+        {
+            var found = new Dictionary<string, InterferenceLevel>();
+
+            // Check services
+            var runningServices = ServiceController.GetServices();
+            foreach (var service in runningServices)
+            {
+                if (service.Status != ServiceControllerStatus.Stopped &&
+                    service.Status != ServiceControllerStatus.Paused &&
+                    Interference.ContainsKey(service.ServiceName))
+                {
+                    var level = Interference[service.ServiceName];
+
+                    if ((level & InterferenceLevel.Service) == InterferenceLevel.Service)
+                    {
+                        found.Add(service.ServiceName, level);
+                    }
+                }
+            }
+
+            // Check processes
+            var runningProcesses = Process.GetProcesses();
+            foreach (var process in runningProcesses)
+            {
+                if (Interference.ContainsKey(process.ProcessName))
+                {
+                    var level = Interference[process.ProcessName];
+
+                    if ((level & InterferenceLevel.Process) == InterferenceLevel.Process)
+                    {
+                        found.Add(process.ProcessName, level);
+                    }
+                }
+            }
+
+            return found;
+        }
 
         #endregion
 
