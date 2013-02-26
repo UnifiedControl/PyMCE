@@ -22,23 +22,59 @@
 // http://www.gnu.org/copyleft/gpl.html
 #endregion
 
+using System.Diagnostics;
+using System.IO.Pipes;
 using System.ServiceProcess;
+using PyMCE.Core.Device;
 
 namespace PyMCE_Service
 {
     public partial class PyMceService : ServiceBase
     {
+        public EventLog Logger { get; private set; }
+
+        private NamedPipeServerStream _pipe;
+        private Transceiver _transceiver;
+
         public PyMceService()
         {
             InitializeComponent();
+
+            // Setup event logger
+            Logger = new EventLog();
+            if (!EventLog.SourceExists(ServiceName))
+            {
+                EventLog.CreateEventSource(ServiceName, "Application");
+            }
+            Logger.Source = ServiceName;
+            Logger.EnableRaisingEvents = true;
+            Debug.Listeners.Add(new EventLogWriterTraceListener(Logger));
+
+            Logger.WriteEntry("Constructed");
+
+            // Create named pipe for IPC
+            _pipe = new NamedPipeServerStream(ServiceName, PipeDirection.InOut, 1,
+                PipeTransmissionMode.Message, PipeOptions.Asynchronous);
+            Logger.WriteEntry("Pipe Constructed");
+
+            // Create the PyMCE Transceiver
+            _transceiver = new Transceiver(TransceiverMode.PipeInput);
+            _transceiver.SetPipe(_pipe);
+            Logger.WriteEntry("Transceiver Constructed");
         }
 
         protected override void OnStart(string[] args)
         {
+            Logger.WriteEntry("OnStart");
+
+            _transceiver.Start();
         }
 
         protected override void OnStop()
         {
+            Logger.WriteEntry("OnStop");
+
+            _transceiver.Stop();
         }
     }
 }

@@ -29,6 +29,7 @@ using System.ServiceProcess;
 using PyMCE.Core.Infrared;
 using Microsoft.Win32;
 using System.Collections.Generic;
+using System.IO;
 
 namespace PyMCE.Core.Device
 {
@@ -81,6 +82,24 @@ namespace PyMCE.Core.Device
         Learn = 4,
         Transmit = 8,
         Receive = 16
+    }
+
+    public enum TransceiverMode
+    {
+        /// <summary>
+        /// Directly connect to the MCE Device
+        /// </summary>
+        Direct,
+
+        /// <summary>
+        /// Pipe commands to the output steam
+        /// </summary>
+        PipeOutput,
+
+        /// <summary>
+        /// Wait for piped commands from the input stream
+        /// </summary>
+        PipeInput
     }
 
     #endregion
@@ -162,6 +181,9 @@ namespace PyMCE.Core.Device
 
         #endregion
 
+        private TransceiverMode _currentMode = TransceiverMode.Direct;
+        private Stream _pipe = null;
+
         private Driver _driver;
 
         private object _learnLock = new object();
@@ -176,7 +198,25 @@ namespace PyMCE.Core.Device
 
         #endregion
 
+        #region Constructor
+
+        public Transceiver() { }
+
+        public Transceiver(TransceiverMode mode)
+        {
+            _currentMode = mode;
+        }
+
+        #endregion
+
         #region Public Methods
+
+        public void SetPipe(Stream pipe)
+        {
+            if (_currentMode != TransceiverMode.PipeInput && _currentMode != TransceiverMode.PipeOutput)
+                throw new InvalidOperationException("SetPipe only available if Transceiver is constructed using a pipe mode");
+            _pipe = pipe;
+        }
 
         #region Learn
 
