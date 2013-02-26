@@ -24,6 +24,7 @@
 
 using System;
 using PyMCE.Core.Device;
+using PyMCE.Core.Infrared;
 
 namespace PyMCE_Console
 {
@@ -36,7 +37,7 @@ namespace PyMCE_Console
             var transceiver = new Transceiver();
             transceiver.Start();
 
-            byte[] learned = null;
+            IRCode learned = null;
 
             Console.Write(PromptMessage);
             string line;

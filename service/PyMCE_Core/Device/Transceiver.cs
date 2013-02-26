@@ -192,7 +192,7 @@ namespace PyMCE.Core.Device
             get { return Enum.GetNames(typeof (BlasterPort)); }
         }
 
-        public bool Transmit(string port, byte[] data)
+        public bool Transmit(string port, IRCode code)
         {
             var blasterPort = BlasterPort.Both;
             try
@@ -204,10 +204,8 @@ namespace PyMCE.Core.Device
                 Debug.WriteLine(string.Format("Invalid Blaster Port ({0}), using default {1}", port, blasterPort));
             }
 
-            var code = IRCode.FromByteArray(data);
-
             if(code == null)
-                throw new ArgumentException("Invalid IR Command data", "data");
+                throw new ArgumentException("Invalid IR Command data", "code");
 
             _driver.Send(code, (int)blasterPort);
 

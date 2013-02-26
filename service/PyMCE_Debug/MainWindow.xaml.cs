@@ -90,9 +90,7 @@ namespace PyMCE_Debug
 
         private void LocalTransmit(object sender, RoutedEventArgs e)
         {
-            var code = Encoding.ASCII.GetBytes(CodeString.Text);
-
-            Local.Transceiver.Transmit("", code);
+            Local.Transceiver.Transmit("", IRCode.FromString(CodeString.Text));
         }
 
         #endregion
