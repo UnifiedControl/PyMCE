@@ -136,9 +136,15 @@ namespace PyMCE.Core.Utils
             {
                 switch (level)
                 {
-                    // Ignore Debug and Trace messages (excessive logging)
-                    case LogLevel.Debug:  break;
-                    case LogLevel.Trace: break;
+                    // Only write debug and trace messages if we are in debug mode
+                    #if DEBUG
+                    case LogLevel.Debug:
+                        EventLogWrite(className, message, EventLogEntryType.Information);
+                        break;
+                    case LogLevel.Trace:
+                        EventLogWrite(className, message, EventLogEntryType.Information);
+                        break;
+                    #endif
 
                     case LogLevel.Info:
                         EventLogWrite(className, message, EventLogEntryType.Information);
