@@ -33,8 +33,8 @@ namespace PyMCE_Service
     {
         public EventLog Logger { get; private set; }
 
-        private NamedPipeServerStream _pipe;
-        private Transceiver _transceiver;
+        private readonly NamedPipeServerStream _pipe;
+        private readonly Transceiver _transceiver;
 
         public PyMceService()
         {

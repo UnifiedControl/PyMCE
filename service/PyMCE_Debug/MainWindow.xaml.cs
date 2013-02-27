@@ -31,6 +31,7 @@ using System.Collections.Generic;
 using System;
 using PyMCE.Core.Infrared;
 using System.Diagnostics;
+using PyMCE.Core.Utils;
 
 namespace PyMCE_Debug
 {
@@ -41,6 +42,9 @@ namespace PyMCE_Debug
 
         public MainWindow()
         {
+            Log.Target = LogTarget.Debug | LogTarget.EventLog;
+            Log.Debug("Started");
+
             Local = new LocalManager(this);
             Service = new ServiceManager(this);
 
