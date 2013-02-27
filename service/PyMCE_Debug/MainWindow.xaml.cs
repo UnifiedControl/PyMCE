@@ -26,11 +26,8 @@ using System.Windows.Controls;
 using PyMCE.Core.Device;
 using System.Windows;
 using PyMCE_Debug.Managers;
-using System.Text;
-using System.Collections.Generic;
 using System;
 using PyMCE.Core.Infrared;
-using System.Diagnostics;
 using PyMCE.Core.Utils;
 
 namespace PyMCE_Debug
@@ -43,7 +40,7 @@ namespace PyMCE_Debug
         public MainWindow()
         {
             Log.Target = LogTarget.Debug | LogTarget.EventLog;
-            Log.Debug("Started");
+            Log.Info("Started");
 
             Local = new LocalManager(this);
             Service = new ServiceManager(this);
@@ -87,7 +84,7 @@ namespace PyMCE_Debug
                                 }
                                 else
                                 {
-                                    Debug.WriteLine("Learning Failed: " + result.Status);
+                                    Log.Warn("Learning Failed: " + result.Status);
                                 }
                             });
         }

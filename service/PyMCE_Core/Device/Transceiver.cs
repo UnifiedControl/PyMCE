@@ -30,6 +30,7 @@ using PyMCE.Core.Infrared;
 using Microsoft.Win32;
 using System.Collections.Generic;
 using System.IO;
+using PyMCE.Core.Utils;
 
 namespace PyMCE.Core.Device
 {
@@ -213,6 +214,7 @@ namespace PyMCE.Core.Device
 
         public void SetPipe(Stream pipe)
         {
+            Log.Trace("SetPipe()");
             if (_currentMode != TransceiverMode.PipeInput && _currentMode != TransceiverMode.PipeOutput)
                 throw new InvalidOperationException("SetPipe only available if Transceiver is constructed using a pipe mode");
             _pipe = pipe;
@@ -222,6 +224,7 @@ namespace PyMCE.Core.Device
 
         public LearnStatus Learn(out IRCode code)
         {
+            Log.Trace("Learn()");
             LearnStatus status;
 
             lock (_learnLock)
@@ -242,6 +245,7 @@ namespace PyMCE.Core.Device
 
         public void LearnAsync(LearnCompletedDelegate callback)
         {
+            Log.Trace("LearnAsync()");
             LearnDelegate learnDelegate = Learn;
 
             learnDelegate.BeginInvoke(LearnAsyncCallback, new LearnAsyncState(learnDelegate, callback));
@@ -266,6 +270,8 @@ namespace PyMCE.Core.Device
 
         public bool Transmit(string port, IRCode code)
         {
+            Log.Trace("Transmit()");
+
             var blasterPort = BlasterPort.Both;
             try
             {
@@ -273,7 +279,7 @@ namespace PyMCE.Core.Device
             }
             catch (Exception)
             {
-                Debug.WriteLine(string.Format("Invalid Blaster Port ({0}), using default {1}", port, blasterPort));
+                Log.Warn("Invalid Blaster Port ({0}), using default {1}", port, blasterPort);
             }
 
             if(code == null)
@@ -290,7 +296,7 @@ namespace PyMCE.Core.Device
 
         public void Start(InterferenceLevel[] ignore = null)
         {
-            Trace.WriteLine("Start MicrosoftMceTransceiver");
+            Log.Trace("Start()");
 
             if (_driver != null)
                 throw new InvalidOperationException("MicrosoftMceTransceiver already started");
@@ -363,12 +369,14 @@ namespace PyMCE.Core.Device
 
         public void Suspend()
         {
+            Log.Trace("Suspend()");
             if(_driver != null)
                 _driver.Suspend();
         }
 
         public void Resume()
         {
+            Log.Trace("Resume()");
             if(_driver != null)
                 _driver.Resume();
         }
@@ -376,6 +384,8 @@ namespace PyMCE.Core.Device
         public void Stop()
         {
             if (_driver == null) return;
+
+            Log.Trace("Stop()");
 
             try
             {
@@ -396,6 +406,7 @@ namespace PyMCE.Core.Device
         /// <returns>Dictionary detailing programs/services that could interfere and their "Interference Level"</returns>
         public static Dictionary<string, InterferenceLevel> InterferenceCheck()
         {
+            Log.Trace("InterferenceCheck()");
             var found = new Dictionary<string, InterferenceLevel>();
 
             // Check services
@@ -538,7 +549,7 @@ namespace PyMCE.Core.Device
             }
             catch (Exception ex)
             {
-                Trace.WriteLine(ex.ToString());
+                Log.Warn(ex);
             }
 
             // XP & Vista ...
@@ -551,7 +562,7 @@ namespace PyMCE.Core.Device
             }
             catch (Exception ex)
             {
-                Trace.WriteLine(ex.ToString());
+                Log.Warn(ex);
             }
         }
 
@@ -570,7 +581,7 @@ namespace PyMCE.Core.Device
             }
             catch (Exception ex)
             {
-                Trace.WriteLine(ex);
+                Log.Warn(ex);
             }
 
             // Try Replacement driver
@@ -584,7 +595,7 @@ namespace PyMCE.Core.Device
             }
             catch (Exception ex)
             {
-                Trace.WriteLine(ex);
+                Log.Warn(ex);
             }
 
             return false;

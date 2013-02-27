@@ -31,7 +31,7 @@ namespace PyMCE.Core.Utils
         private const string FormatMessageFull = "({0:yyyy-MM-dd HH:mm:ss.ffffff}) [{1}] [{2}] - {3}";
 
         private static bool _isEnabled = true;
-        private static LogTarget _target = LogTarget.Debug | LogTarget.EventLog;
+        private static LogTarget _target = LogTarget.Debug;
         private static readonly Dictionary<string, EventLog> EventLogCache;
 
         public static bool IsEnabled
@@ -103,11 +103,16 @@ namespace PyMCE.Core.Utils
             EventLogCache[className].WriteEntry(message, type);
         }
 
+        public static void WriteLine(LogLevel level, Exception exception)
+        {
+            WriteLine(level, exception.ToString());
+        }
+
         public static void WriteLine(LogLevel level, string message, params object[] args)
         {
             if (!IsEnabled) return;
 
-            string className = GetExecutingClassName();
+            var className = GetExecutingClassName();
 
             message = string.Format(message, args);
             string messageFull = null;
@@ -131,11 +136,11 @@ namespace PyMCE.Core.Utils
             {
                 switch (level)
                 {
-                    // Ignore Info and Trace messages (excessive logging)
-                    case LogLevel.Info:  break;
+                    // Ignore Debug and Trace messages (excessive logging)
+                    case LogLevel.Debug:  break;
                     case LogLevel.Trace: break;
 
-                    case LogLevel.Debug:
+                    case LogLevel.Info:
                         EventLogWrite(className, message, EventLogEntryType.Information);
                         break;
                     case LogLevel.Warn:
@@ -148,6 +153,30 @@ namespace PyMCE.Core.Utils
             }
         }
 
+        public static void WriteArray(LogLevel level, Array array)
+        {
+            var message = "";
+
+            foreach (var item in array)
+            {
+                if (item is byte)
+                    message += string.Format("{0:X2}", (byte) item);
+
+                else if (item is ushort)
+                    message += string.Format("{0:X4}", (ushort) item);
+
+                else if (item is int)
+                    message += string.Format("{1}{0}", (int) item, (int) item > 0 ? "+" : String.Empty);
+
+                else
+                    message += string.Format("{0}", item);
+
+                message += ", ";
+            }
+
+            WriteLine(level, message);
+        }
+
         #region Trace
 
         public static void Trace(string message, params object[] args)
@@ -158,6 +187,25 @@ namespace PyMCE.Core.Utils
         public static void T(string message, params object[] args)
         {
             Trace(message, args);
+        }
+
+        #endregion
+
+        #region Info
+
+        public static void Info(Exception ex)
+        {
+            WriteLine(LogLevel.Info, ex);
+        }
+
+        public static void Info(string message, params object[] args)
+        {
+            WriteLine(LogLevel.Info, message, args);
+        }
+
+        public static void I(string message, params object[] args)
+        {
+            Info(message, args);
         }
 
         #endregion
@@ -176,21 +224,12 @@ namespace PyMCE.Core.Utils
 
         #endregion
 
-        #region Info
-
-        public static void Info(string message, params object[] args)
-        {
-            WriteLine(LogLevel.Info, message, args);
-        }
-
-        public static void I(string message, params object[] args)
-        {
-            Info(message, args);
-        }
-
-        #endregion
-
         #region Warn
+
+        public static void Warn(Exception exception)
+        {
+            WriteLine(LogLevel.Warn, exception);
+        }
 
         public static void Warn(string message, params object[] args)
         {
@@ -205,6 +244,11 @@ namespace PyMCE.Core.Utils
         #endregion
 
         #region Error
+
+        public static void Error(Exception exception)
+        {
+            WriteLine(LogLevel.Error, exception);
+        }
 
         public static void Error(string message, params object[] args)
         {

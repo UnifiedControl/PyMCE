@@ -26,8 +26,6 @@ using Microsoft.Win32.SafeHandles;
 using PyMCE.Core.Infrared;
 using System;
 using System.ComponentModel;
-using System.Diagnostics;
-using System.IO;
 using System.Runtime.InteropServices;
 
 namespace PyMCE.Core.Device
@@ -503,98 +501,5 @@ namespace PyMCE.Core.Device
         }
 
         #endregion Static Methods
-
-        #region Debug
-
-        /// <summary>
-        /// Opens a debug output file.
-        /// </summary>
-        /// <param name="fileName">Name of the file.</param>
-        protected static void DebugOpen(string fileName)
-        {
-            /*try
-            {
-#if TEST_APPLICATION
-        string path = fileName;
-#else
-                string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                                           String.Format("IR Server Suite\\Logs\\{0}", fileName));
-#endif
-                _debugFile = new StreamWriter(path, false);
-                _debugFile.AutoFlush = true;
-            }
-#if TRACE
-            catch (Exception ex)
-            {
-                Trace.WriteLine(ex.ToString());
-#else
-      catch
-      {
-#endif
-                _debugFile = null;
-            }*/
-        }
-
-        /// <summary>
-        /// Closes the debug output file.
-        /// </summary>
-        protected static void DebugClose()
-        {
-            /*if (_debugFile != null)
-            {
-                _debugFile.Close();
-                _debugFile.Dispose();
-                _debugFile = null;
-            }*/
-        }
-
-        /// <summary>
-        /// Writes a line to the debug output file.
-        /// </summary>
-        /// <param name="line">The line.</param>
-        /// <param name="args">Formatting arguments.</param>
-        protected static void DebugWriteLine(string line, params object[] args)
-        {
-            Debug.WriteLine(String.Format(line, args));
-        }
-
-        /// <summary>
-        /// Writes a string to the debug output file.
-        /// </summary>
-        /// <param name="text">The string to write.</param>
-        /// <param name="args">Formatting arguments.</param>
-        protected static void DebugWrite(string text, params object[] args)
-        {
-            Debug.Write(String.Format(text, args));
-        }
-
-        /// <summary>
-        /// Writes a new line to the debug output file.
-        /// </summary>
-        protected static void DebugWriteNewLine()
-        {
-            Debug.WriteLine(String.Empty);
-        }
-
-        /// <summary>
-        /// Dumps an Array to the debug output file.
-        /// </summary>
-        /// <param name="array">The array.</param>
-        protected static void DebugDump(Array array)
-        {
-            foreach (object item in array)
-            {
-                if (item is byte) DebugWrite("{0:X2}", (byte)item);
-                else if (item is ushort) DebugWrite("{0:X4}", (ushort)item);
-                else if (item is int) DebugWrite("{1}{0}", (int)item, (int)item > 0 ? "+" : String.Empty);
-                else DebugWrite("{0}", item);
-
-                DebugWrite(", ");
-            }
-
-            DebugWriteNewLine();
-        }
-
-        #endregion Debug
     }
 }

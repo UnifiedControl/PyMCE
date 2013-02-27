@@ -29,6 +29,7 @@ using Microsoft.Win32.SafeHandles;
 using System.Threading;
 using System.Collections.Generic;
 using System.ComponentModel;
+using PyMCE.Core.Utils;
 
 namespace PyMCE.Core.Device
 {
@@ -215,25 +216,16 @@ namespace PyMCE.Core.Device
         /// </summary>
         public override void Start()
         {
-            try
-            {
-                DebugOpen("MicrosoftMceTransceiver_DriverReplacement.log");
-                DebugWriteLine("Start()");
-                DebugWriteLine("Device Guid: {0}", _deviceGuid);
-                DebugWriteLine("Device Path: {0}", _devicePath);
-                DebugWriteLine("Device Type: {0}", Enum.GetName(typeof(DeviceType), _deviceType));
+            Log.Trace("Start()");
+            Log.Info("Device Guid: {0}", _deviceGuid);
+            Log.Info("Device Path: {0}", _devicePath);
+            Log.Info("Device Type: {0}", Enum.GetName(typeof(DeviceType), _deviceType));
 
-                FireStateChanged(new StateChangedEventArgs(RunningState.Starting));
+            FireStateChanged(new StateChangedEventArgs(RunningState.Starting));
 
-                OpenDevice();
-                StartReadThread();
-                InitializeDevice();
-            }
-            catch
-            {
-                DebugClose();
-                throw;
-            }
+            OpenDevice();
+            StartReadThread();
+            InitializeDevice();
         }
 
         /// <summary>
@@ -241,7 +233,7 @@ namespace PyMCE.Core.Device
         /// </summary>
         public override void Stop()
         {
-            DebugWriteLine("Stop()");
+            Log.Trace("Stop()");
 
             FireStateChanged(new StateChangedEventArgs(RunningState.Stopping));
 
@@ -256,12 +248,11 @@ namespace PyMCE.Core.Device
             }
             catch (Exception ex)
             {
-                DebugWriteLine(ex.ToString());
+                Log.Warn(ex);
                 throw;
             }
             finally
             {
-                DebugClose();
                 FireStateChanged(new StateChangedEventArgs(RunningState.Stopped));
             }
         }
@@ -271,13 +262,13 @@ namespace PyMCE.Core.Device
         /// </summary>
         public override void Suspend()
         {
-            DebugWriteLine("Suspend()");
+            Log.Trace("Suspend()");
 
             try
             {
                 if (_readHandle == null)
                 {
-                    DebugWriteLine("Warning: Device is not active");
+                    Log.Warn("Device is not active");
                     return;
                 }
 
@@ -288,7 +279,7 @@ namespace PyMCE.Core.Device
             }
             catch (Exception ex)
             {
-                DebugWriteLine(ex.ToString());
+                Log.Warn(ex);
                 throw;
             }
         }
@@ -298,13 +289,13 @@ namespace PyMCE.Core.Device
         /// </summary>
         public override void Resume()
         {
-            DebugWriteLine("Resume()");
+            Log.Trace("Resume()");
 
             try
             {
                 if (String.IsNullOrEmpty(Find(_deviceGuid)))
                 {
-                    DebugWriteLine("Device not found");
+                    Log.Warn("Device not found");
                     return;
                 }
 
@@ -319,7 +310,7 @@ namespace PyMCE.Core.Device
             }
             catch (Exception ex)
             {
-                DebugWriteLine(ex.ToString());
+                Log.Warn(ex);
                 throw;
             }
         }
@@ -332,7 +323,7 @@ namespace PyMCE.Core.Device
         /// <returns>Learn status.</returns>
         public override LearnStatus Learn(int learnTimeout, out IRCode learned)
         {
-            DebugWriteLine("Learn()");
+            Log.Trace("Learn()");
 
             learned = null;
             _learningCode = new IRCode();
@@ -346,7 +337,7 @@ namespace PyMCE.Core.Device
             while (_readThreadMode == ReadThreadMode.Learning && Environment.TickCount < learnStartTick + learnTimeout)
                 Thread.Sleep(PacketTimeout);
 
-            DebugWriteLine("End Learn");
+            Log.Trace("End Learn");
 
             var modeWas = _readThreadMode;
 
@@ -366,7 +357,7 @@ namespace PyMCE.Core.Device
                     break;
 
                 case ReadThreadMode.LearningDone:
-                    DebugDump(_learningCode.TimingData);
+                    Log.WriteArray(LogLevel.Trace, _learningCode.TimingData);
                     if (_learningCode.FinalizeData())
                     {
                         learned = _learningCode;
@@ -386,8 +377,8 @@ namespace PyMCE.Core.Device
         /// <param name="port">IR port to send to.</param>
         public override void Send(IRCode code, int port)
         {
-            DebugWrite("Send(): ");
-            DebugDump(code.TimingData);
+            Log.Trace("Send()");
+            Log.WriteArray(LogLevel.Trace, code.TimingData);
 
             // Reset device (hopefully this will stop the blaster from stalling)
             //WriteSync(ResetPacket);
@@ -418,7 +409,7 @@ namespace PyMCE.Core.Device
         /// </summary>
         private void InitializeDevice()
         {
-            DebugWriteLine("InitializeDevice()");
+            Log.Trace("InitializeDevice()");
 
             WriteSync(StartPacket);
 
@@ -441,7 +432,7 @@ namespace PyMCE.Core.Device
         /// <returns>Raw device data.</returns>
         private static byte[] DataPacket(IRCode code)
         {
-            DebugWriteLine("DataPacket()");
+            Log.Trace("DataPacket()");
 
             if (code.TimingData.Length == 0)
                 return null;
@@ -456,7 +447,7 @@ namespace PyMCE.Core.Device
                 byte duration = (byte)Math.Abs(Math.Round(time / TimingResolution));
                 bool pulse = (time > 0);
 
-                DebugWrite("{0}{1}, ", pulse ? '+' : '-', duration * TimingResolution);
+                Log.Trace("{0}{1}", pulse ? '+' : '-', duration * TimingResolution);
 
                 while (duration > 0x7F)
                 {
@@ -467,8 +458,6 @@ namespace PyMCE.Core.Device
 
                 packet.Add((byte)(pulse ? 0x80 | duration : duration));
             }
-
-            DebugWriteNewLine();
 
             // Insert byte count markers into packet data bytes ...
             var subpackets = (int)Math.Ceiling(packet.Count / (double)4);
@@ -554,11 +543,11 @@ namespace PyMCE.Core.Device
             if (carrier == IRCode.CarrierFrequencyUnknown)
             {
                 carrier = IRCode.CarrierFrequencyDefault;
-                DebugWriteLine("SetCarrierFrequency(): No carrier frequency specificied, using default ({0})", carrier);
+                Log.Info("SetCarrierFrequency(): No carrier frequency specificied, using default ({0})", carrier);
             }
             else
             {
-                DebugWriteLine("SetCarrierFrequency({0})", carrier);
+                Log.Trace("SetCarrierFrequency({0})", carrier);
             }
 
             var carrierPacket = new byte[SetCarrierFreqPacket.Length];
@@ -587,11 +576,11 @@ namespace PyMCE.Core.Device
         /// </summary>
         private void StartReadThread()
         {
-            DebugWriteLine("StartReadThread()");
+            Log.Trace("StartReadThread()");
 
             if (_readThread != null)
             {
-                DebugWriteLine("Read thread already started");
+                Log.Info("Read thread already started");
                 return;
             }
 
@@ -613,11 +602,11 @@ namespace PyMCE.Core.Device
         /// </summary>
         private void StopReadThread()
         {
-            DebugWriteLine("StopReadThread()");
+            Log.Trace("StopReadThread()");
 
             if (_readThread == null)
             {
-                DebugWriteLine("Read thread already stopped");
+                Log.Info("Read thread already stopped");
                 return;
             }
 
@@ -632,7 +621,7 @@ namespace PyMCE.Core.Device
             }
             catch (Exception ex)
             {
-                DebugWriteLine(ex.ToString());
+                Log.Warn(ex);
             }
             finally
             {
@@ -648,11 +637,11 @@ namespace PyMCE.Core.Device
         /// </summary>
         private void OpenDevice()
         {
-            DebugWriteLine("OpenDevice()");
+            Log.Trace("OpenDevice()");
 
             if (_readHandle != null)
             {
-                DebugWriteLine("Device already open");
+                Log.Info("Device already open");
                 return;
             }
 
@@ -684,7 +673,7 @@ namespace PyMCE.Core.Device
             var success = false;
             _readHandle.DangerousAddRef(ref success);
             if (!success)
-                DebugWriteLine("Warning: Failed to initialize device removal notification");
+                Log.Warn("Failed to initialize device removal notification");
 
             _deviceAvailable = true;
         }
@@ -694,13 +683,13 @@ namespace PyMCE.Core.Device
         /// </summary>
         private void CloseDevice()
         {
-            DebugWriteLine("CloseDevice()");
+            Log.Trace("CloseDevice()");
 
             _deviceAvailable = false;
 
             if (_readHandle == null && _writeHandle == null)
             {
-                DebugWriteLine("Device already closed");
+                Log.Info("Device already closed");
                 return;
             }
 
@@ -752,7 +741,7 @@ namespace PyMCE.Core.Device
                     int bytesRead;
 
                     var readDevice = ReadFile(_readHandle, deviceBufferPtr, DeviceBufferSize, out bytesRead,
-                                               overlapped.Overlapped);
+                                              overlapped.Overlapped);
                     lastError = Marshal.GetLastWin32Error();
 
                     switch (_readThreadMode)
@@ -772,7 +761,7 @@ namespace PyMCE.Core.Device
 
                         while (true)
                         {
-                            var handle = WaitHandle.WaitAny(waitHandles, 2 * PacketTimeout, false);
+                            var handle = WaitHandle.WaitAny(waitHandles, 2*PacketTimeout, false);
 
                             if (handle == ErrorWaitTimeout)
                                 continue;
@@ -799,8 +788,8 @@ namespace PyMCE.Core.Device
                     packetBytes = new byte[bytesRead];
                     Marshal.Copy(deviceBufferPtr, packetBytes, 0, bytesRead);
 
-                    DebugWrite("Received bytes ({0}): ", bytesRead);
-                    DebugDump(packetBytes);
+                    Log.Trace("Received bytes ({0}): ", bytesRead);
+                    Log.WriteArray(LogLevel.Trace, packetBytes);
 
                     int[] timingData = null;
 
@@ -812,27 +801,29 @@ namespace PyMCE.Core.Device
                     {
                         double firmware = 0.0;
 
-                        var indexOfFF = Array.IndexOf(packetBytes, (byte)0xFF);
+                        var indexOfFF = Array.IndexOf(packetBytes, (byte) 0xFF);
                         while (indexOfFF != -1)
                         {
-                            if (packetBytes.Length > indexOfFF + 2 && packetBytes[indexOfFF + 1] == 0x0B) // FF 0B XY - Firmware X.Y00
+                            if (packetBytes.Length > indexOfFF + 2 && packetBytes[indexOfFF + 1] == 0x0B)
+                                // FF 0B XY - Firmware X.Y00
                             {
                                 byte b1 = packetBytes[indexOfFF + 2];
 
-                                firmware += (b1 >> 4) + (0.1 * (b1 & 0x0F));
-                                DebugWriteLine("Firmware: {0}", firmware);
+                                firmware += (b1 >> 4) + (0.1*(b1 & 0x0F));
+                                Log.Debug("Firmware: {0}", firmware);
                             }
 
-                            if (packetBytes.Length > indexOfFF + 2 && packetBytes[indexOfFF + 1] == 0x1B) // FF 1B XY - Firmware 0.0XY
+                            if (packetBytes.Length > indexOfFF + 2 && packetBytes[indexOfFF + 1] == 0x1B)
+                                // FF 1B XY - Firmware 0.0XY
                             {
                                 byte b1 = packetBytes[indexOfFF + 2];
 
-                                firmware += (0.01 * (b1 >> 4)) + (0.001 * (b1 & 0x0F));
-                                DebugWriteLine("Firmware: {0}", firmware);
+                                firmware += (0.01*(b1 >> 4)) + (0.001*(b1 & 0x0F));
+                                Log.Debug("Firmware: {0}", firmware);
                             }
 
                             if (packetBytes.Length > indexOfFF + 1)
-                                indexOfFF = Array.IndexOf(packetBytes, (byte)0xFF, indexOfFF + 1);
+                                indexOfFF = Array.IndexOf(packetBytes, (byte) 0xFF, indexOfFF + 1);
                             else
                                 break;
                         }
@@ -861,15 +852,17 @@ namespace PyMCE.Core.Device
                                 }
 
                                 if (_learningCode == null)
-                                    throw new InvalidOperationException("Learning not initialised correctly, _learningCode object is null");
+                                    throw new InvalidOperationException(
+                                        "Learning not initialised correctly, _learningCode object is null");
 
                                 _learningCode.AddTimingData(timingData);
 
                                 // Example: 9F 01 02 9F 15 00 BE 80
-                                var indexOf9F = Array.IndexOf(packetBytes, (byte)0x9F);
+                                var indexOf9F = Array.IndexOf(packetBytes, (byte) 0x9F);
                                 while (indexOf9F != -1)
                                 {
-                                    if (packetBytes.Length > indexOf9F + 3 && packetBytes[indexOf9F + 1] == 0x15) // 9F 15 XX XX
+                                    if (packetBytes.Length > indexOf9F + 3 && packetBytes[indexOf9F + 1] == 0x15)
+                                        // 9F 15 XX XX
                                     {
                                         byte b1 = packetBytes[indexOf9F + 2];
                                         byte b2 = packetBytes[indexOf9F + 3];
@@ -877,25 +870,25 @@ namespace PyMCE.Core.Device
                                         int onTime, onCount;
                                         GetIrCodeLengths(_learningCode, out onTime, out onCount);
 
-                                        double carrierCount = (b1 * 256) + b2;
+                                        double carrierCount = (b1*256) + b2;
 
-                                        if (carrierCount / onCount < 2.0)
+                                        if (carrierCount/onCount < 2.0)
                                         {
                                             _learningCode.Carrier = IRCode.CarrierFrequencyDCMode;
                                         }
                                         else
                                         {
-                                            double carrier = 1000000 * carrierCount / onTime;
+                                            double carrier = 1000000*carrierCount/onTime;
 
                                             // TODO: Double-Check this calculation.
                                             if (carrier > 32000)
                                             {
-                                                _learningCode.Carrier = (int)(carrier + 0.05 * carrier - 0.666667);
+                                                _learningCode.Carrier = (int) (carrier + 0.05*carrier - 0.666667);
                                                 // was: _learningCode.Carrier = (int) (carrier + 0.05*carrier - 32000/48000);
                                             }
                                             else
                                             {
-                                                _learningCode.Carrier = (int)carrier;
+                                                _learningCode.Carrier = (int) carrier;
                                             }
                                         }
 
@@ -905,7 +898,7 @@ namespace PyMCE.Core.Device
 
                                     if (packetBytes.Length > indexOf9F + 1)
                                     {
-                                        indexOf9F = Array.IndexOf(packetBytes, (byte)0x9F, indexOf9F + 1);
+                                        indexOf9F = Array.IndexOf(packetBytes, (byte) 0x9F, indexOf9F + 1);
                                     }
                                     else
                                     {
@@ -922,14 +915,14 @@ namespace PyMCE.Core.Device
             }
             catch (ThreadInterruptedException ex)
             {
-                DebugWriteLine(ex.Message);
+                Log.Info(ex);
 
                 if (_readHandle != null)
                     CancelIo(_readHandle);
             }
             catch (Exception ex)
             {
-                DebugWriteLine(ex.ToString());
+                Log.Warn(ex);
 
                 if (_readHandle != null)
                     CancelIo(_readHandle);
@@ -943,7 +936,7 @@ namespace PyMCE.Core.Device
                 waitHandle.Close();
             }
 
-            DebugWriteLine("Read Thread Ended");
+            Log.Debug("Read Thread Ended");
             FireStateChanged(new StateChangedEventArgs(RunningState.Stopped));
         }
 
@@ -953,8 +946,8 @@ namespace PyMCE.Core.Device
         /// <param name="data">Packet to write to device.</param>
         private void WriteSync(byte[] data)
         {
-            DebugWrite("WriteSync({0}): ", data.Length);
-            DebugDump(data);
+            Log.Trace("WriteSync({0}): ", data.Length);
+            Log.WriteArray(LogLevel.Trace, data);
 
             if (!_deviceAvailable)
                 throw new InvalidOperationException("Device not available");
@@ -1027,8 +1020,8 @@ namespace PyMCE.Core.Device
             {
                 if (_decodeCarry != 0)
                 {
-                    DebugWriteLine("Decode Carry EXISTS: {0}", _decodeCarry);
-                    DebugDump(packet);
+                    Log.Debug("Decode Carry EXISTS: {0}", _decodeCarry);
+                    Log.WriteArray(LogLevel.Trace, packet);
                 }
 
                 var timingData = new List<int>();
@@ -1059,8 +1052,8 @@ namespace PyMCE.Core.Device
                         _decodeCarry = (index + bytes + 1) - packet.Length;
                         bytes -= _decodeCarry;
 
-                        DebugWriteLine("Decode Carry SET: {0}", _decodeCarry);
-                        DebugDump(packet);
+                        Log.Debug("Decode Carry SET: {0}", _decodeCarry);
+                        Log.WriteArray(LogLevel.Trace, packet);
                     }
 
                     int j;
@@ -1086,16 +1079,16 @@ namespace PyMCE.Core.Device
                 if (len != 0)
                     timingData.Add(len * TimingResolution);
 
-                DebugWrite("Received timing:    ");
-                DebugDump(timingData.ToArray());
+                Log.Trace("Received timing:    ");
+                Log.WriteArray(LogLevel.Trace, timingData.ToArray());
 
                 return timingData.ToArray();
             }
             catch (Exception ex)
             {
-                DebugWriteLine(ex.ToString());
-                DebugWrite("Method Input:       ");
-                DebugDump(packet);
+                Log.Warn(ex);
+                Log.Warn("Method Input:       ");
+                Log.WriteArray(LogLevel.Warn, packet);
 
                 return null;
             }

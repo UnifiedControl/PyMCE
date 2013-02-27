@@ -26,53 +26,41 @@ using System.Diagnostics;
 using System.IO.Pipes;
 using System.ServiceProcess;
 using PyMCE.Core.Device;
+using PyMCE.Core.Utils;
 
 namespace PyMCE_Service
 {
     public partial class PyMceService : ServiceBase
     {
-        public EventLog Logger { get; private set; }
-
         private readonly NamedPipeServerStream _pipe;
         private readonly Transceiver _transceiver;
 
         public PyMceService()
         {
             InitializeComponent();
-
-            // Setup event logger
-            Logger = new EventLog();
-            if (!EventLog.SourceExists(ServiceName))
-            {
-                EventLog.CreateEventSource(ServiceName, "Application");
-            }
-            Logger.Source = ServiceName;
-            Logger.EnableRaisingEvents = true;
-            Debug.Listeners.Add(new EventLogWriterTraceListener(Logger));
-
-            Logger.WriteEntry("Constructed");
+            Log.Target = LogTarget.EventLog;
 
             // Create named pipe for IPC
             _pipe = new NamedPipeServerStream(ServiceName, PipeDirection.InOut, 1,
                 PipeTransmissionMode.Message, PipeOptions.Asynchronous);
-            Logger.WriteEntry("Pipe Constructed");
+            Log.Trace("Pipe Constructed");
 
             // Create the PyMCE Transceiver
             _transceiver = new Transceiver(TransceiverMode.PipeInput);
             _transceiver.SetPipe(_pipe);
-            Logger.WriteEntry("Transceiver Constructed");
+            Log.Trace("Transceiver Constructed");
         }
 
         protected override void OnStart(string[] args)
         {
-            Logger.WriteEntry("OnStart");
+            Log.Info("OnStart");
 
             _transceiver.Start();
         }
 
         protected override void OnStop()
         {
-            Logger.WriteEntry("OnStop");
+            Log.Info("OnStop");
 
             _transceiver.Stop();
         }
