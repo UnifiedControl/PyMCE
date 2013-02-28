@@ -6,3 +6,4 @@ obj/
 *.user
 
 /service/_ReSharper.PyMCE
+/service/packages
