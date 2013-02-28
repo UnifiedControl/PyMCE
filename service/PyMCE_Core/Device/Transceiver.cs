@@ -95,12 +95,31 @@ namespace PyMCE.Core.Device
         /// <summary>
         /// Pipe commands to the output steam
         /// </summary>
-        PipeOutput,
+        PipeClient,
 
         /// <summary>
         /// Wait for piped commands from the input stream
         /// </summary>
-        PipeInput
+        PipeServer
+    }
+
+    public enum RunningState
+    {
+        Unknown,
+
+        Starting,
+        Started,
+
+        Stopping,
+        Stopped
+    }
+
+    public enum ReceivingState
+    {
+        Unknown,
+
+        Receiving,
+        Learning
     }
 
     #endregion
@@ -153,86 +172,96 @@ namespace PyMCE.Core.Device
 
     public class Transceiver
     {
-        #region Constants
-
-        private const string AutomaticButtonsRegKey = @"SYSTEM\CurrentControlSet\Services\HidIr\Remotes\745a17a0-74d3-11d0-b6fe-00a0c90f57da";
-
-        private const int VistaVersionNumber = 6;
-
-        private static readonly Guid MicrosoftGuid = new Guid(0x7951772d, 0xcd50, 0x49b7, 0xb1, 0x03, 0x2b, 0xaa, 0xc4, 0x94, 0xfc, 0x57);
-        private static readonly Guid ReplacementGuid = new Guid(0x00873fdf, 0x61a8, 0x11d1, 0xaa, 0x5e, 0x00, 0xc0, 0x4f, 0xb1, 0x72, 0x8b);
-
-        private static readonly Dictionary<string, InterferenceLevel> Interference
-            = new Dictionary<string, InterferenceLevel>
-                  {
-                      {
-                          "AlternateMceIrService",
-                          InterferenceLevel.Service | InterferenceLevel.Learn
-                      }
-                  };
-
-        #endregion Constants
-
         #region Variables
 
-        #region Configuration
+        private readonly TransceiverMode _currentMode = TransceiverMode.Direct;
+        private Agent.AgentBase _agent = null;
 
         private bool _disableMceServices = true;
-        private int _learnTimeout = 10000;
 
         #endregion
 
-        private TransceiverMode _currentMode = TransceiverMode.Direct;
-        private Stream _pipe = null;
+        #region Properties
 
-        private Driver _driver;
+        #region Configuration
 
-        private object _learnLock = new object();
+        public InterferenceLevel[] InterferenceIgnore { get; set; }
+
+        public bool DisableMceServices
+        {
+            get { return _disableMceServices; }
+            set { _disableMceServices = value; }
+        }
+
+        #endregion
+
+        public Stream Pipe
+        {
+            get { return _agent.Pipe; }
+            set { _agent.Pipe = value; }
+        }
+
+        public RunningState CurrentRunningState
+        {
+            get { return _agent.CurrentRunningState; }
+        }
+
+        public ReceivingState CurrentReceivingState
+        {
+            get { return _agent.CurrentReceivingState; }
+        }
 
         #endregion
 
         #region Events
 
         public event CodeReceivedDelegate CodeReceived;
-
         public event StateChangedDelegate StateChanged;
 
         #endregion
 
         #region Constructor
 
-        public Transceiver() { }
+        public Transceiver()
+        {
+            ConstructAgent();
+        }
 
         public Transceiver(TransceiverMode mode)
         {
             _currentMode = mode;
+            ConstructAgent();
+        }
+
+        private void ConstructAgent()
+        {
+            switch (_currentMode)
+            {
+                case TransceiverMode.Direct:
+                    _agent = new Agent.Direct();
+                    break;
+                case TransceiverMode.PipeClient:
+                    _agent = new Agent.PipeClient();
+                    break;
+                case TransceiverMode.PipeServer:
+                    _agent = new Agent.PipeServer();
+                    break;
+            }
+
+            // Setup callbacks
+            _agent.StateChangedCallback = Agent_StateChangedCallback;
+            _agent.CodeReceivedCallback = Agent_CodeReceivedCallback;
         }
 
         #endregion
 
         #region Public Methods
 
-        public void SetPipe(Stream pipe)
-        {
-            Log.Trace("SetPipe()");
-            if (_currentMode != TransceiverMode.PipeInput && _currentMode != TransceiverMode.PipeOutput)
-                throw new InvalidOperationException("SetPipe only available if Transceiver is constructed using a pipe mode");
-            _pipe = pipe;
-        }
-
         #region Learn
 
         public LearnStatus Learn(out IRCode code)
         {
-            Log.Trace("Learn()");
-            LearnStatus status;
-
-            lock (_learnLock)
-            {
-                status = _driver.Learn(_learnTimeout, out code);
-            }
-
-            return status;
+            return _agent.Learn(out code);
         }
 
         public LearnResult Learn()
@@ -270,335 +299,49 @@ namespace PyMCE.Core.Device
 
         public bool Transmit(string port, IRCode code)
         {
-            Log.Trace("Transmit()");
-
-            var blasterPort = BlasterPort.Both;
-            try
-            {
-                blasterPort = (BlasterPort) Enum.Parse(typeof (BlasterPort), port, true);
-            }
-            catch (Exception)
-            {
-                Log.Warn("Invalid Blaster Port ({0}), using default {1}", port, blasterPort);
-            }
-
-            if(code == null)
-                throw new ArgumentException("Invalid IR Command data", "code");
-
-            _driver.Send(code, (int)blasterPort);
-
-            return true;
+            return _agent.Transmit(port, code);
         }
 
         #endregion
 
         #region Control Methods
 
-        public void Start(InterferenceLevel[] ignore = null)
+        public void Start()
         {
-            Log.Trace("Start()");
-
-            if (_driver != null)
-                throw new InvalidOperationException("MicrosoftMceTransceiver already started");
-
-            if (_disableMceServices)
-                DisableMceServices();
-
-            var interference = InterferenceCheck();
-            var interferenceError = false;
-            var interferenceErrorMessage = "The following programs/services have been found to cause interference and should be closed: ";
-
-            foreach (var item in interference)
-            {
-                var itemName = item.Key;
-                var itemError = true;
-                if (ignore != null)
-                {
-                    foreach (var ignoreLevel in ignore)
-                    {
-                        if ((item.Value & ignoreLevel) == ignoreLevel)
-                        {
-                            itemError = false;
-                            itemName = "";
-                        }
-                    }
-                }
-                interferenceErrorMessage += itemName + ", ";
-                if (!interferenceError) interferenceError = itemError;
-            }
-
-            if (interferenceError)
-            {
-                throw new InterferenceException(interference,
-                    interferenceErrorMessage.Substring(0, interferenceErrorMessage.Length - 2));
-            }
-
-            Guid deviceGuid;
-            string devicePath;
-
-            Driver newDriver;
-
-            if (FindDevice(out deviceGuid, out devicePath))
-            {
-                if (deviceGuid == MicrosoftGuid)
-                {
-                    if (Environment.OSVersion.Version.Major >= VistaVersionNumber)
-                    {
-                        newDriver = new DriverVista(deviceGuid, devicePath);
-                    }
-                    else
-                    {
-                        newDriver = new DriverXP(deviceGuid, devicePath);
-                    }
-                }
-                else
-                {
-                    newDriver = new DriverReplacement(deviceGuid, devicePath);
-                }
-            }
-            else
-            {
-                throw new InvalidOperationException("Device not found");
-            }
-
-            _driver = newDriver;
-            _driver.StateChangedCallback = Driver_StateChangedCallback;
-            _driver.CodeReceivedCallback = Driver_CodeReceivedCallback;
-            _driver.Start();
+            _agent.Start(InterferenceIgnore, DisableMceServices);
         }
 
         public void Suspend()
         {
-            Log.Trace("Suspend()");
-            if(_driver != null)
-                _driver.Suspend();
+            _agent.Suspend();
         }
 
         public void Resume()
         {
-            Log.Trace("Resume()");
-            if(_driver != null)
-                _driver.Resume();
+            _agent.Resume();
         }
 
         public void Stop()
         {
-            if (_driver == null) return;
-
-            Log.Trace("Stop()");
-
-            try
-            {
-                _driver.Stop();
-            }
-            finally
-            {
-                _driver = null;
-            }
+            _agent.Stop();
         }
 
         #endregion
 
-        /// <summary>
-        /// Checks that there are no programs or services running that are known
-        /// to interfere with the transceiver input/output.
-        /// </summary>
-        /// <returns>Dictionary detailing programs/services that could interfere and their "Interference Level"</returns>
-        public static Dictionary<string, InterferenceLevel> InterferenceCheck()
-        {
-            Log.Trace("InterferenceCheck()");
-            var found = new Dictionary<string, InterferenceLevel>();
-
-            // Check services
-            var runningServices = ServiceController.GetServices();
-            foreach (var service in runningServices)
-            {
-                if (service.Status != ServiceControllerStatus.Stopped &&
-                    service.Status != ServiceControllerStatus.Paused &&
-                    Interference.ContainsKey(service.ServiceName))
-                {
-                    var level = Interference[service.ServiceName];
-
-                    if ((level & InterferenceLevel.Service) == InterferenceLevel.Service)
-                    {
-                        found.Add(service.ServiceName, level);
-                    }
-                }
-            }
-
-            // Check processes
-            var runningProcesses = Process.GetProcesses();
-            foreach (var process in runningProcesses)
-            {
-                if (Interference.ContainsKey(process.ProcessName))
-                {
-                    var level = Interference[process.ProcessName];
-
-                    if ((level & InterferenceLevel.Process) == InterferenceLevel.Process)
-                    {
-                        found.Add(process.ProcessName, level);
-                    }
-                }
-            }
-
-            return found;
-        }
-
         #endregion
 
-        #region Properties
+        #region Agent Callbacks
 
-        public RunningState CurrentRunningState
-        {
-            get
-            {
-                return _driver != null ? _driver.CurrentRunningState : RunningState.Stopped;
-            }
-        }
-
-        public ReceivingState CurrentReceivingState
-        {
-            get
-            {
-                return _driver != null ? _driver.CurrentReceivingState : ReceivingState.None;
-            }
-        }
-
-        #endregion
-
-        #region Driver Callbacks
-
-        private void Driver_CodeReceivedCallback(object sender, CodeReceivedEventArgs codeReceivedEventArgs)
+        private void Agent_CodeReceivedCallback(object sender, CodeReceivedEventArgs codeReceivedEventArgs)
         {
             if (CodeReceived != null)
                 CodeReceived(sender, codeReceivedEventArgs);
         }
 
-        private void Driver_StateChangedCallback(object sender, StateChangedEventArgs stateChangedEventArgs)
+        private void Agent_StateChangedCallback(object sender, StateChangedEventArgs stateChangedEventArgs)
         {
             if (StateChanged != null)
                 StateChanged(sender, stateChangedEventArgs);
-        }
-
-        #endregion
-
-        #region Internal Methods
-
-        internal static bool CheckAutomaticButtons()
-        {
-            using (var key = Registry.LocalMachine.OpenSubKey(AutomaticButtonsRegKey, false))
-            {
-                return (key.GetValue("CodeSetNum0", null) != null);
-            }
-        }
-
-        internal static void EnableAutomaticButtons()
-        {
-            using (var key = Registry.LocalMachine.OpenSubKey(AutomaticButtonsRegKey, true))
-            {
-                key.SetValue("CodeSetNum0", 1, RegistryValueKind.DWord);
-                key.SetValue("CodeSetNum1", 2, RegistryValueKind.DWord);
-                key.SetValue("CodeSetNum2", 3, RegistryValueKind.DWord);
-                key.SetValue("CodeSetNum3", 4, RegistryValueKind.DWord);
-            }
-        }
-
-        internal static void DisableAutomaticButtons()
-        {
-            using (var key = Registry.LocalMachine.OpenSubKey(AutomaticButtonsRegKey, true))
-            {
-                key.DeleteValue("CodeSetNum0", false);
-                key.DeleteValue("CodeSetNum1", false);
-                key.DeleteValue("CodeSetNum2", false);
-                key.DeleteValue("CodeSetNum3", false);
-            }
-        }
-
-        private static void DisableMceServices()
-        {
-            // "HKLM\SYSTEM\CurrentControlSet\Services\<service name>\Start"
-            // 2 for automatic, 3 manual , 4 disabled
-
-
-            // Vista ...
-            // Stop Microsoft MCE ehRecvr, mcrdsvc and ehSched processes (if they exist)
-            try
-            {
-                var services = ServiceController.GetServices();
-                foreach (var service in services)
-                {
-                    if (service.ServiceName.Equals("ehRecvr", StringComparison.OrdinalIgnoreCase))
-                    {
-                        if (service.Status != ServiceControllerStatus.Stopped &&
-                            service.Status != ServiceControllerStatus.StopPending)
-                            service.Stop();
-                    }
-                    else if (service.ServiceName.Equals("ehSched", StringComparison.OrdinalIgnoreCase))
-                    {
-                        if (service.Status != ServiceControllerStatus.Stopped &&
-                            service.Status != ServiceControllerStatus.StopPending)
-                            service.Stop();
-                    }
-                    else if (service.ServiceName.Equals("mcrdsvc", StringComparison.OrdinalIgnoreCase))
-                    {
-                        if (service.Status != ServiceControllerStatus.Stopped &&
-                            service.Status != ServiceControllerStatus.StopPending)
-                            service.Stop();
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Warn(ex);
-            }
-
-            // XP & Vista ...
-            // Kill Microsoft MCE ehtray process (if it exists)
-            try
-            {
-                var processes = Process.GetProcesses();
-                foreach (var proc in processes.Where(proc => proc.ProcessName.Equals("ehtray", StringComparison.OrdinalIgnoreCase)))
-                    proc.Kill();
-            }
-            catch (Exception ex)
-            {
-                Log.Warn(ex);
-            }
-        }
-
-        private static bool FindDevice(out Guid deviceGuid, out string devicePath)
-        {
-            devicePath = null;
-
-            // Try eHome driver
-            deviceGuid = MicrosoftGuid;
-            try
-            {
-                devicePath = Driver.Find(deviceGuid);
-
-                if (!String.IsNullOrEmpty(devicePath))
-                    return true;
-            }
-            catch (Exception ex)
-            {
-                Log.Warn(ex);
-            }
-
-            // Try Replacement driver
-            deviceGuid = ReplacementGuid;
-            try
-            {
-                devicePath = Driver.Find(deviceGuid);
-
-                if (!String.IsNullOrEmpty(devicePath))
-                    return true;
-            }
-            catch (Exception ex)
-            {
-                Log.Warn(ex);
-            }
-
-            return false;
         }
 
         #endregion

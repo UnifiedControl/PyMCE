@@ -104,7 +104,8 @@
     <PostBuildEvent>"$(TargetDir)installutil.exe" "$(TargetPath)"</PostBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
-    <PreBuildEvent>"$(TargetDir)installutil.exe" /u "$(TargetPath)"
+    <PreBuildEvent>net stop PyMCE_Service
+"$(TargetDir)installutil.exe" /u "$(TargetPath)"
 exit /b 0</PreBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

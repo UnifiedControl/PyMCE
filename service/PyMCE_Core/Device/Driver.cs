@@ -42,22 +42,6 @@ namespace PyMCE.Core.Device
         }
     }
 
-    public enum RunningState
-    {
-        Starting,
-        Started,
-
-        Stopping,
-        Stopped
-    }
-
-    public enum ReceivingState
-    {
-        None,
-        Receiving,
-        Learning
-    }
-
     public class StateChangedEventArgs : EventArgs
     {
         public RunningState RunningState { get; private set; }
@@ -66,7 +50,7 @@ namespace PyMCE.Core.Device
         public StateChangedEventArgs(RunningState runningState)
         {
             RunningState = runningState;
-            ReceivingState = ReceivingState.None;
+            ReceivingState = ReceivingState.Unknown;
         }
 
         public StateChangedEventArgs(RunningState runningState, ReceivingState receivingState)

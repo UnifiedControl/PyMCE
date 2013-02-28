@@ -92,7 +92,7 @@ namespace PyMCE_Debug.Managers
         private void _transceiver_StateChanged(object sender, StateChangedEventArgs e)
         {
             Status = e.RunningState.ToString();
-            ReceivingStatus = e.ReceivingState != ReceivingState.None ? e.ReceivingState.ToString() : "";
+            ReceivingStatus = e.ReceivingState != ReceivingState.Unknown ? e.ReceivingState.ToString() : "";
 
             FirePropertyChanged("ControlsEnabled");
         }

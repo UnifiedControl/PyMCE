@@ -46,8 +46,8 @@ namespace PyMCE_Service
             Log.Trace("Pipe Constructed");
 
             // Create the PyMCE Transceiver
-            _transceiver = new Transceiver(TransceiverMode.PipeInput);
-            _transceiver.SetPipe(_pipe);
+            _transceiver = new Transceiver(TransceiverMode.PipeServer);
+            _transceiver.Pipe = _pipe;
             Log.Trace("Transceiver Constructed");
         }
 
