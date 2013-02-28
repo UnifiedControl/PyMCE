@@ -95,12 +95,12 @@ namespace PyMCE.Core.Device
         /// <summary>
         /// Pipe commands to the output steam
         /// </summary>
-        PipeClient,
+        NamedPipeClient,
 
         /// <summary>
         /// Wait for piped commands from the input stream
         /// </summary>
-        PipeServer
+        NamedPipeServer
     }
 
     public enum RunningState
@@ -195,11 +195,15 @@ namespace PyMCE.Core.Device
 
         #endregion
 
-        public Stream Pipe
+        #region NamedPipeClient, NamedPipeServer
+
+        public string PipeName
         {
-            get { return _agent.Pipe; }
-            set { _agent.Pipe = value; }
+            get { return _agent.PipeName; }
+            set { _agent.PipeName = value; }
         }
+
+        #endregion
 
         public RunningState CurrentRunningState
         {
@@ -240,11 +244,11 @@ namespace PyMCE.Core.Device
                 case TransceiverMode.Direct:
                     _agent = new Agent.Direct();
                     break;
-                case TransceiverMode.PipeClient:
-                    _agent = new Agent.PipeClient();
+                case TransceiverMode.NamedPipeClient:
+                    _agent = new Agent.NamedPipeClient();
                     break;
-                case TransceiverMode.PipeServer:
-                    _agent = new Agent.PipeServer();
+                case TransceiverMode.NamedPipeServer:
+                    _agent = new Agent.NamedPipeServer();
                     break;
             }
 

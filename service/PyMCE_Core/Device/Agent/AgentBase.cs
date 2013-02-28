@@ -50,7 +50,7 @@ namespace PyMCE.Core.Device.Agent
         internal StateChangedDelegate StateChangedCallback { get; set; }
         internal CodeReceivedDelegate CodeReceivedCallback { get; set; }
 
-        public virtual Stream Pipe
+        public virtual string PipeName
         {
             get { return null; }
             set { throw new NotImplementedException(); }

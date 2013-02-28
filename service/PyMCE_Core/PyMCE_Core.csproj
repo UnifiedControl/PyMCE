@@ -66,8 +66,8 @@
   <ItemGroup>
     <Compile Include="Device\Agent\AgentBase.cs" />
     <Compile Include="Device\Agent\Direct.cs" />
-    <Compile Include="Device\Agent\PipeClient.cs" />
-    <Compile Include="Device\Agent\PipeServer.cs" />
+    <Compile Include="Device\Agent\NamedPipeClient.cs" />
+    <Compile Include="Device\Agent\NamedPipeServer.cs" />
     <Compile Include="Device\DeviceIoOverlapped.cs" />
     <Compile Include="Device\Driver.cs" />
     <Compile Include="Device\DriverReplacement.cs" />

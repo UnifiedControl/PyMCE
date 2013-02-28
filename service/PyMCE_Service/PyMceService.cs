@@ -40,14 +40,11 @@ namespace PyMCE_Service
             InitializeComponent();
             Log.Target = LogTarget.EventLog;
 
-            // Create named pipe for IPC
-            _pipe = new NamedPipeServerStream(ServiceName, PipeDirection.InOut, 1,
-                PipeTransmissionMode.Message, PipeOptions.Asynchronous);
-            Log.Trace("Pipe Constructed");
-
             // Create the PyMCE Transceiver
-            _transceiver = new Transceiver(TransceiverMode.PipeServer);
-            _transceiver.Pipe = _pipe;
+            _transceiver = new Transceiver(TransceiverMode.NamedPipeServer)
+                               {
+                                   PipeName = "PyMCE"
+                               };
             Log.Trace("Transceiver Constructed");
         }
 

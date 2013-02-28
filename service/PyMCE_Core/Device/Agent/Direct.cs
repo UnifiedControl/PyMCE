@@ -1,5 +1,4 @@
-﻿
-using PyMCE.Core.Infrared;
+﻿using PyMCE.Core.Infrared;
 using PyMCE.Core.Utils;
 using System;
 

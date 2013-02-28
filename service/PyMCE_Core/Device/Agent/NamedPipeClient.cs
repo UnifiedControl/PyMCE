@@ -1,9 +1,8 @@
-﻿
-using PyMCE.Core.Infrared;
+﻿using PyMCE.Core.Infrared;
 
 namespace PyMCE.Core.Device.Agent
 {
-    class PipeServer : AgentBase
+    class NamedPipeClient : AgentBase
     {
         #region Public Methods
 
